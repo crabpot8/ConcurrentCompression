@@ -49,116 +49,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Vector;
 
-public class Jpeg {
-	/** ************ Main Method *************** */
-	/*****************************************************************************
-	 * Jpeg("Imagefile", Quality, "OutFileName") According to JAVA virtual
-	 * machine, the files which can be read are jpeg, tiff and gif files
-	 ****************************************************************************/
-
-	public static void StandardUsage() {
-		System.out.println("JpegEncoder for Java(tm) Version 0.9");
-		System.out.println("");
-		System.out
-				.println("Program usage: java Jpeg \"InputImage\".\"ext\" Quality [\"OutputFile\"[.jpg]]");
-		System.out.println("");
-		System.out
-				.println("Where \"InputImage\" is the name of an existing image in the current directory.");
-		System.out
-				.println("  (\"InputImage may specify a directory, too.) \"ext\" must be .tif, .gif,");
-		System.out.println("  or .jpg.");
-		System.out
-				.println("Quality is an integer (0 to 100) that specifies how similar the compressed");
-		System.out
-				.println("  image is to \"InputImage.\"  100 is almost exactly like \"InputImage\" and 0 is");
-		System.out
-				.println("  most dissimilar.  In most cases, 70 - 80 gives very good results.");
-		System.out
-				.println("\"OutputFile\" is an optional argument.  If \"OutputFile\" isn't specified, then");
-		System.out
-				.println("  the input file name is adopted.  This program will NOT write over an existing");
-		System.out
-				.println("  file.  If a directory is specified for the input image, then \"OutputFile\"");
-		System.out
-				.println("  will be written in that directory.  The extension \".jpg\" may automatically be");
-		System.out.println("  added.");
-		System.out.println("");
-		System.out
-				.println("Copyright 1998 BioElectroMech and James R. Weeks.  Portions copyright IJG and");
-		System.out
-				.println("  Florian Raemy, LCAV.  See license.txt for details.");
-		System.out
-				.println("Visit BioElectroMech at www.obrador.com.  Email James@obrador.com.");
-		System.exit(0);
-	}
-
-	public static void main(String args[]) {
-		Image image = null;
-		FileOutputStream dataOut = null;
-		File file, outFile;
-		JpegEncoder jpg;
-		String string = "";
-		int i, Quality = 80;
-		// Check to see if the input file name has one of the extensions:
-		// .tif, .gif, .jpg
-		// If not, print the standard use info.
-		if (args.length < 2)
-			StandardUsage();
-		if (!args[0].endsWith(".jpg") && !args[0].endsWith(".tif")
-				&& !args[0].endsWith(".gif"))
-			StandardUsage();
-		// First check to see if there is an OutputFile argument. If there isn't
-		// then name the file "InputFile".jpg
-		// Second check to see if the .jpg extension is on the OutputFile
-		// argument.
-		// If there isn't one, add it.
-		// Need to check for the existence of the output file. If it exists
-		// already,
-		// rename the file with a # after the file name, then the .jpg
-		// extension.
-		if (args.length < 3) {
-			string = args[0].substring(0, args[0].lastIndexOf(".")) + ".jpg";
-		} else {
-			string = args[2];
-			if (string.endsWith(".tif") || string.endsWith(".gif"))
-				string = string.substring(0, string.lastIndexOf("."));
-			if (!string.endsWith(".jpg"))
-				string = string.concat(".jpg");
-		}
-		outFile = new File(string);
-		i = 1;
-		while (outFile.exists()) {
-			outFile = new File(string.substring(0, string.lastIndexOf("."))
-					+ (i++) + ".jpg");
-			if (i > 100)
-				System.exit(0);
-		}
-		file = new File(args[0]);
-		if (file.exists()) {
-			try {
-				dataOut = new FileOutputStream(outFile);
-			} catch (IOException e) {
-			}
-			try {
-				Quality = Integer.parseInt(args[1]);
-			} catch (NumberFormatException e) {
-				StandardUsage();
-			}
-			image = Toolkit.getDefaultToolkit().getImage(args[0]);
-			jpg = new JpegEncoder(image, Quality, dataOut);
-			jpg.Compress();
-			try {
-				dataOut.close();
-			} catch (IOException e) {
-			}
-		} else {
-			System.out.println("I couldn't find " + args[0]
-					+ ". Is it in another directory?");
-		}
-		System.exit(0);
-	}
-}
-
 // Version 1.0a
 // Copyright (C) 1998, James R. Weeks and BioElectroMech.
 // Visit BioElectroMech at www.obrador.com. Email James@obrador.com.
@@ -177,13 +67,17 @@ public class Jpeg {
  * JpegEncoder - The JPEG main program which performs a jpeg compression of an
  * image.
  */
-class JpegEncoder extends Frame {
+class JpegEncoder {
 	Thread runner;
 
 	BufferedOutputStream outStream;
 
 	Image image;
 
+	/**
+	 * Getting picture information It takes the Width, Height and RGB scans of
+	 * the image.
+	 */
 	JpegInfo JpegObj;
 
 	Huffman Huf;
@@ -192,36 +86,35 @@ class JpegEncoder extends Frame {
 
 	int imageHeight, imageWidth;
 
+	/**
+	 * Quality of the image. 0 to 100 and from bad image quality, high
+	 * compression to good image quality low compression
+	 */
 	int Quality;
 
 	int code;
 
-	public static int[] jpegNaturalOrder = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24,
+	int[] jpegNaturalOrder = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24,
 			32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13,
 			6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
 			30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47,
 			55, 62, 63, };
 
+	/**
+	 * 
+	 * @param image
+	 *            An image that should be compressed into jpeg. For proper speed
+	 *            tests this image should be fully loaded from disk / network
+	 * @param quality
+	 *            A 0..100 low to high quality parameter. Low quality means high
+	 *            compression / low filesize, and high quality means low
+	 *            compression / big filesize
+	 * @param out
+	 *            The OutputStream the resulting data should be written to.
+	 */
 	public JpegEncoder(Image image, int quality, OutputStream out) {
-		MediaTracker tracker = new MediaTracker(this);
-		tracker.addImage(image, 0);
-		try {
-			tracker.waitForID(0);
-		} catch (InterruptedException e) {
-			// Got to do something?
-		}
-		/*
-		 * Quality of the image. 0 to 100 and from bad image quality, high
-		 * compression to good image quality low compression
-		 */
 		Quality = quality;
-
-		/*
-		 * Getting picture information It takes the Width, Height and RGB scans
-		 * of the image.
-		 */
 		JpegObj = new JpegInfo(image);
-
 		imageHeight = JpegObj.imageHeight;
 		imageWidth = JpegObj.imageWidth;
 		outStream = new BufferedOutputStream(out);
@@ -229,18 +122,10 @@ class JpegEncoder extends Frame {
 		Huf = new Huffman(imageWidth, imageHeight);
 	}
 
-	public void setQuality(int quality) {
-		dct = new DCT(quality);
-	}
-
-	public int getQuality() {
-		return Quality;
-	}
-
-	public void Compress() {
-		WriteHeaders(outStream);
-		WriteCompressedData(outStream);
-		WriteEOI(outStream);
+	public void compress() {
+		writeHeaders(outStream);
+		writeCompressedData(outStream);
+		writeEOI(outStream);
 		try {
 			outStream.flush();
 		} catch (IOException e) {
@@ -248,7 +133,7 @@ class JpegEncoder extends Frame {
 		}
 	}
 
-	public void WriteCompressedData(BufferedOutputStream outStream) {
+	private void writeCompressedData(BufferedOutputStream outStream) {
 		int i, j, r, c, a, b;
 		int comp, xpos, ypos, xblockoffset, yblockoffset;
 		float inputArray[][];
@@ -339,18 +224,18 @@ class JpegEncoder extends Frame {
 		Huf.flushBuffer(outStream);
 	}
 
-	public void WriteEOI(BufferedOutputStream out) {
+	private void writeEOI(BufferedOutputStream out) {
 		byte[] EOI = { (byte) 0xFF, (byte) 0xD9 };
-		WriteMarker(EOI, out);
+		writeMarker(EOI, out);
 	}
 
-	public void WriteHeaders(BufferedOutputStream out) {
+	private void writeHeaders(BufferedOutputStream out) {
 		int i, j, index, offset, length;
 		int tempArray[];
 
 		// the SOI marker
 		byte[] SOI = { (byte) 0xFF, (byte) 0xD8 };
-		WriteMarker(SOI, out);
+		writeMarker(SOI, out);
 
 		// The order of the following headers is quiet inconsequential.
 		// the JFIF header
@@ -373,7 +258,7 @@ class JpegEncoder extends Frame {
 		JFIF[15] = (byte) 0x01;
 		JFIF[16] = (byte) 0x00;
 		JFIF[17] = (byte) 0x00;
-		WriteArray(JFIF, out);
+		writeArray(JFIF, out);
 
 		// Comment Header
 		String comment = "";
@@ -386,7 +271,7 @@ class JpegEncoder extends Frame {
 		COM[3] = (byte) (length & 0xFF);
 		java.lang.System.arraycopy(JpegObj.Comment.getBytes(), 0, COM, 4,
 				JpegObj.Comment.length());
-		WriteArray(COM, out);
+		writeArray(COM, out);
 
 		// The DQT header
 		// 0 is the luminance index and 1 is the chrominance index
@@ -403,7 +288,7 @@ class JpegEncoder extends Frame {
 				DQT[offset++] = (byte) tempArray[jpegNaturalOrder[j]];
 			}
 		}
-		WriteArray(DQT, out);
+		writeArray(DQT, out);
 
 		// Start of Frame Header
 		byte SOF[] = new byte[19];
@@ -423,7 +308,7 @@ class JpegEncoder extends Frame {
 			SOF[index++] = (byte) ((JpegObj.HsampFactor[i] << 4) + JpegObj.VsampFactor[i]);
 			SOF[index++] = (byte) JpegObj.QtableNumber[i];
 		}
-		WriteArray(SOF, out);
+		writeArray(SOF, out);
 
 		// The DHT Header
 		byte DHT1[], DHT2[], DHT3[], DHT4[];
@@ -458,7 +343,7 @@ class JpegEncoder extends Frame {
 		}
 		DHT4[2] = (byte) (((index - 2) >> 8) & 0xFF);
 		DHT4[3] = (byte) ((index - 2) & 0xFF);
-		WriteArray(DHT4, out);
+		writeArray(DHT4, out);
 
 		// Start of Scan Header
 		byte SOS[] = new byte[14];
@@ -475,11 +360,11 @@ class JpegEncoder extends Frame {
 		SOS[index++] = (byte) JpegObj.Ss;
 		SOS[index++] = (byte) JpegObj.Se;
 		SOS[index++] = (byte) ((JpegObj.Ah << 4) + JpegObj.Al);
-		WriteArray(SOS, out);
+		writeArray(SOS, out);
 
 	}
 
-	void WriteMarker(byte[] data, BufferedOutputStream out) {
+	private void writeMarker(byte[] data, BufferedOutputStream out) {
 		try {
 			out.write(data, 0, 2);
 		} catch (IOException e) {
@@ -487,7 +372,7 @@ class JpegEncoder extends Frame {
 		}
 	}
 
-	void WriteArray(byte[] data, BufferedOutputStream out) {
+	private void writeArray(byte[] data, BufferedOutputStream out) {
 		int length;
 		try {
 			length = ((data[2] & 0xFF) << 8) + (data[3] & 0xFF) + 2;
@@ -504,35 +389,29 @@ class JpegEncoder extends Frame {
 /*
  * DCT - A Java implementation of the Discreet Cosine Transform
  */
-
 class DCT {
 	/**
 	 * DCT Block Size - default 8
 	 */
-	public int N = 8;
+	private int N = 8;
 
-	/**
-	 * Image Quality (0-100) - default 80 (good image / good compression)
-	 */
-	public int QUALITY = 80;
+	Object quantum[] = new Object[2];
 
-	public Object quantum[] = new Object[2];
-
-	public Object Divisors[] = new Object[2];
+	private Object Divisors[] = new Object[2];
 
 	/**
 	 * Quantitization Matrix for luminace.
 	 */
-	public int quantum_luminance[] = new int[N * N];
+	private int quantum_luminance[] = new int[N * N];
 
-	public double DivisorsLuminance[] = new double[N * N];
+	private double DivisorsLuminance[] = new double[N * N];
 
 	/**
 	 * Quantitization Matrix for chrominance.
 	 */
-	public int quantum_chrominance[] = new int[N * N];
+	private int quantum_chrominance[] = new int[N * N];
 
-	public double DivisorsChrominance[] = new double[N * N];
+	private double DivisorsChrominance[] = new double[N * N];
 
 	/**
 	 * Constructs a new DCT object. Initializes the cosine transform matrix
@@ -782,30 +661,6 @@ class DCT {
 	 * to the output of the AAN method below. It is ridiculously inefficient.
 	 */
 
-	// For now the final output is unusable. The associated quantization step
-	// needs some tweaking. If you get this part working, please let me know.
-	public double[][] forwardDCTExtreme(float input[][]) {
-		double output[][] = new double[N][N];
-		int v, u, x, y;
-		for (v = 0; v < 8; v++) {
-			for (u = 0; u < 8; u++) {
-				for (x = 0; x < 8; x++) {
-					for (y = 0; y < 8; y++) {
-						output[v][u] += input[x][y]
-								* Math
-										.cos(((double) (2 * x + 1) * (double) u * Math.PI) / 16)
-								* Math
-										.cos(((double) (2 * y + 1) * (double) v * Math.PI) / 16);
-					}
-				}
-				output[v][u] *= (0.25)
-						* ((u == 0) ? (1.0 / Math.sqrt(2)) : (double) 1.0)
-						* ((v == 0) ? (1.0 / Math.sqrt(2)) : (double) 1.0);
-			}
-		}
-		return output;
-	}
-
 	/*
 	 * This method preforms a DCT on a block of image data using the AAN method
 	 * as implemented in the IJG Jpeg-6a library.
@@ -931,71 +786,40 @@ class DCT {
 
 		return outputData;
 	}
-
-	/*
-	 * This is the method for quantizing a block DCT'ed with forwardDCTExtreme
-	 * This method quantitizes data and rounds it to the nearest integer.
-	 */
-	public int[] quantizeBlockExtreme(double inputData[][], int code) {
-		int outputData[] = new int[N * N];
-		int i, j;
-		int index;
-		index = 0;
-		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) {
-				outputData[index] = (int) (Math.round(inputData[i][j]
-						/ (((int[]) (quantum[code]))[index])));
-				index++;
-			}
-		}
-
-		return outputData;
-	}
 }
 
 // This class was modified by James R. Weeks on 3/27/98.
 // It now incorporates Huffman table derivation as in the C jpeg library
 // from the IJG, Jpeg-6a.
-
 class Huffman {
 	int bufferPutBits, bufferPutBuffer;
 
-	public int ImageHeight;
+	private int DC_matrix0[][];
 
-	public int ImageWidth;
+	private int AC_matrix0[][];
 
-	public int DC_matrix0[][];
+	private int DC_matrix1[][];
 
-	public int AC_matrix0[][];
+	private int AC_matrix1[][];
 
-	public int DC_matrix1[][];
+	private Object DC_matrix[];
 
-	public int AC_matrix1[][];
+	private Object AC_matrix[];
 
-	public Object DC_matrix[];
-
-	public Object AC_matrix[];
-
-	public int code;
-
-	public int NumOfDCTables;
-
-	public int NumOfACTables;
-
-	public int[] bitsDCluminance = { 0x00, 0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+	private int[] bitsDCluminance = { 0x00, 0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0,
 			0, 0, 0, 0 };
 
-	public int[] valDCluminance = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+	private int[] valDCluminance = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
-	public int[] bitsDCchrominance = { 0x01, 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	private int[] bitsDCchrominance = { 0x01, 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 			0, 0, 0, 0, 0 };
 
-	public int[] valDCchrominance = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+	private int[] valDCchrominance = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
-	public int[] bitsACluminance = { 0x10, 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4,
+	private int[] bitsACluminance = { 0x10, 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4,
 			0, 0, 1, 0x7d };
 
-	public int[] valACluminance = { 0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05,
+	private int[] valACluminance = { 0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05,
 			0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07, 0x22, 0x71,
 			0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23, 0x42, 0xb1, 0xc1, 0x15,
 			0x52, 0xd1, 0xf0, 0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16,
@@ -1012,10 +836,10 @@ class Huffman {
 			0xe9, 0xea, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
 			0xfa };
 
-	public int[] bitsACchrominance = { 0x11, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4,
+	private int[] bitsACchrominance = { 0x11, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4,
 			4, 0, 1, 2, 0x77 };
 
-	public int[] valACchrominance = { 0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05,
+	private int[] valACchrominance = { 0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05,
 			0x21, 0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71, 0x13, 0x22,
 			0x32, 0x81, 0x08, 0x14, 0x42, 0x91, 0xa1, 0xb1, 0xc1, 0x09, 0x23,
 			0x33, 0x52, 0xf0, 0x15, 0x62, 0x72, 0xd1, 0x0a, 0x16, 0x24, 0x34,
@@ -1032,15 +856,15 @@ class Huffman {
 			0xe8, 0xe9, 0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
 			0xfa };
 
-	public Vector bits;
+	Vector bits;
 
-	public Vector val;
+	Vector val;
 
 	/*
 	 * jpegNaturalOrder[i] is the natural-order position of the i'th element of
 	 * zigzag order.
 	 */
-	public static int[] jpegNaturalOrder = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24,
+	private static int[] jpegNaturalOrder = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24,
 			32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13,
 			6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
 			30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47,
@@ -1062,9 +886,6 @@ class Huffman {
 		val.addElement(valDCchrominance);
 		val.addElement(valACchrominance);
 		initHuf();
-		ImageWidth = Width;
-		ImageHeight = Height;
-
 	}
 
 	/**
@@ -1081,9 +902,6 @@ class Huffman {
 	public void HuffmanBlockEncoder(BufferedOutputStream outStream,
 			int zigzag[], int prec, int DCcode, int ACcode) {
 		int temp, temp2, nbits, k, r, i;
-
-		NumOfDCTables = 2;
-		NumOfACTables = 2;
 
 		// The DC portion
 
@@ -1361,52 +1179,52 @@ class Huffman {
 class JpegInfo {
 	String Comment;
 
-	public Image imageobj;
+	private Image imageobj;
 
-	public int imageHeight;
+	private int imageHeight;
 
-	public int imageWidth;
+	private int imageWidth;
 
-	public int BlockWidth[];
+	private int BlockWidth[];
 
-	public int BlockHeight[];
+	private int BlockHeight[];
 
 	// the following are set as the default
-	public int Precision = 8;
+	private int Precision = 8;
 
-	public int NumberOfComponents = 3;
+	private int NumberOfComponents = 3;
 
-	public Object Components[];
+	private Object Components[];
 
-	public int[] CompID = { 1, 2, 3 };
+	private int[] CompID = { 1, 2, 3 };
 
-	public int[] HsampFactor = { 1, 1, 1 };
+	private int[] HsampFactor = { 1, 1, 1 };
 
-	public int[] VsampFactor = { 1, 1, 1 };
+	private int[] VsampFactor = { 1, 1, 1 };
 
-	public int[] QtableNumber = { 0, 1, 1 };
+	private int[] QtableNumber = { 0, 1, 1 };
 
-	public int[] DCtableNumber = { 0, 1, 1 };
+	private int[] DCtableNumber = { 0, 1, 1 };
 
-	public int[] ACtableNumber = { 0, 1, 1 };
+	private int[] ACtableNumber = { 0, 1, 1 };
 
-	public boolean[] lastColumnIsDummy = { false, false, false };
+	private boolean[] lastColumnIsDummy = { false, false, false };
 
-	public boolean[] lastRowIsDummy = { false, false, false };
+	private boolean[] lastRowIsDummy = { false, false, false };
 
-	public int Ss = 0;
+	private int Ss = 0;
 
-	public int Se = 63;
+	private int Se = 63;
 
-	public int Ah = 0;
+	private int Ah = 0;
 
-	public int Al = 0;
+	private int Al = 0;
 
-	public int compWidth[], compHeight[];
+	private int compWidth[], compHeight[];
 
-	public int MaxHsampFactor;
+	private int MaxHsampFactor;
 
-	public int MaxVsampFactor;
+	private int MaxVsampFactor;
 
 	public JpegInfo(Image image) {
 		Components = new Object[NumberOfComponents];

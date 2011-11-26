@@ -26,7 +26,7 @@ public class Main {
 		
 		try {
 			JpegEncoder e = new JpegEncoder(img, 5, new FileOutputStream("dice_low.jpg"));
-			e.Compress();
+			e.compress();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
