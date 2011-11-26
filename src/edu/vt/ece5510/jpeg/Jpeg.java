@@ -37,14 +37,9 @@
 package edu.vt.ece5510.jpeg;
 
 import java.awt.AWTException;
-import java.awt.Frame;
 import java.awt.Image;
-import java.awt.MediaTracker;
-import java.awt.Toolkit;
 import java.awt.image.PixelGrabber;
 import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Vector;
@@ -856,9 +851,9 @@ class Huffman {
 			0xe8, 0xe9, 0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
 			0xfa };
 
-	Vector bits;
+	Vector<int[]> bits;
 
-	Vector val;
+	Vector<int[]> val;
 
 	/*
 	 * jpegNaturalOrder[i] is the natural-order position of the i'th element of
@@ -875,12 +870,12 @@ class Huffman {
 	 */
 	public Huffman(int Width, int Height) {
 
-		bits = new Vector();
+		bits = new Vector<int[]>();
 		bits.addElement(bitsDCluminance);
 		bits.addElement(bitsACluminance);
 		bits.addElement(bitsDCchrominance);
 		bits.addElement(bitsACchrominance);
-		val = new Vector();
+		val = new Vector<int[]>();
 		val.addElement(valDCluminance);
 		val.addElement(valACluminance);
 		val.addElement(valDCchrominance);
@@ -1181,44 +1176,44 @@ class JpegInfo {
 
 	private Image imageobj;
 
-	private int imageHeight;
+	int imageHeight;
 
-	private int imageWidth;
+	int imageWidth;
 
-	private int BlockWidth[];
+	int BlockWidth[];
 
-	private int BlockHeight[];
+	int BlockHeight[];
 
 	// the following are set as the default
-	private int Precision = 8;
+	int Precision = 8;
 
-	private int NumberOfComponents = 3;
+	int NumberOfComponents = 3;
 
-	private Object Components[];
+	Object Components[];
 
-	private int[] CompID = { 1, 2, 3 };
+	int[] CompID = { 1, 2, 3 };
 
-	private int[] HsampFactor = { 1, 1, 1 };
+	int[] HsampFactor = { 1, 1, 1 };
 
-	private int[] VsampFactor = { 1, 1, 1 };
+	int[] VsampFactor = { 1, 1, 1 };
 
-	private int[] QtableNumber = { 0, 1, 1 };
+	int[] QtableNumber = { 0, 1, 1 };
 
-	private int[] DCtableNumber = { 0, 1, 1 };
+	int[] DCtableNumber = { 0, 1, 1 };
 
-	private int[] ACtableNumber = { 0, 1, 1 };
+	int[] ACtableNumber = { 0, 1, 1 };
 
 	private boolean[] lastColumnIsDummy = { false, false, false };
 
 	private boolean[] lastRowIsDummy = { false, false, false };
 
-	private int Ss = 0;
+	int Ss = 0;
 
-	private int Se = 63;
+	int Se = 63;
 
-	private int Ah = 0;
+	int Ah = 0;
 
-	private int Al = 0;
+	int Al = 0;
 
 	private int compWidth[], compHeight[];
 
