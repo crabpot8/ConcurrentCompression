@@ -67,8 +67,6 @@ class JpegEncoder {
 
 	BufferedOutputStream outStream;
 
-	Image image;
-
 	/**
 	 * Getting picture information It takes the Width, Height and RGB scans of
 	 * the image.
@@ -95,6 +93,8 @@ class JpegEncoder {
 			30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47,
 			55, 62, 63, };
 
+	Image mImage;
+	
 	/**
 	 * 
 	 * @param image
@@ -109,15 +109,17 @@ class JpegEncoder {
 	 */
 	public JpegEncoder(Image image, int quality, OutputStream out) {
 		Quality = quality;
-		JpegObj = new JpegInfo(image);
-		imageHeight = JpegObj.imageHeight;
-		imageWidth = JpegObj.imageWidth;
+		mImage = image;
 		outStream = new BufferedOutputStream(out);
-		dct = new DCT(Quality);
-		Huf = new Huffman(imageWidth, imageHeight);
 	}
 
 	public void compress() {
+		JpegObj = new JpegInfo(mImage);
+		imageHeight = JpegObj.imageHeight;
+		imageWidth = JpegObj.imageWidth;
+		dct = new DCT(Quality);
+		Huf = new Huffman(imageWidth, imageHeight);
+		
 		writeHeaders(outStream);
 		writeCompressedData(outStream);
 		writeEOI(outStream);
@@ -305,7 +307,7 @@ class JpegEncoder {
 		}
 		writeArray(SOF, out);
 
-		// The DHT Header
+		// The DHT (Define Huffman Table) Header
 		byte DHT1[], DHT2[], DHT3[], DHT4[];
 		int bytes, temp, oldindex, intermediateindex;
 		length = 2;
