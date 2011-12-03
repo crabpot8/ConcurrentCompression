@@ -36,7 +36,6 @@
 
 package edu.vt.ece5510.jpeg;
 
-import java.awt.AWTException;
 import java.awt.Image;
 import java.awt.image.PixelGrabber;
 import java.io.BufferedOutputStream;
@@ -63,38 +62,30 @@ import java.util.Vector;
  * image.
  */
 class JpegEncoder {
-	Thread runner;
 
-	BufferedOutputStream outStream;
+	private BufferedOutputStream mOutStream;
 
-	/**
-	 * Getting picture information It takes the Width, Height and RGB scans of
-	 * the image.
-	 */
-	JpegInfo JpegObj;
+	private JpegInfo mJpegInfo;
 
-	Huffman Huf;
+	private Huffman mHuffman;
 
-	DCT dct;
-
-	int imageHeight, imageWidth;
+	private DCT mDCT;
 
 	/**
-	 * Quality of the image. 0 to 100 and from bad image quality, high
-	 * compression to good image quality low compression
+	 * 0 to 100 and from bad image quality, high compression to good image
+	 * quality low compression
 	 */
-	int Quality;
+	private int mQuality;
 
-	int code;
+	private Image mImage;
 
-	int[] jpegNaturalOrder = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24,
-			32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13,
-			6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
-			30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47,
-			55, 62, 63, };
+	// Converts zigzag order to natural order
+	private int[] jpegNaturalOrder = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32,
+			25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7,
+			14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37,
+			44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62,
+			63, };
 
-	Image mImage;
-	
 	/**
 	 * 
 	 * @param image
@@ -108,23 +99,21 @@ class JpegEncoder {
 	 *            The OutputStream the resulting data should be written to.
 	 */
 	public JpegEncoder(Image image, int quality, OutputStream out) {
-		Quality = quality;
+		mQuality = quality;
 		mImage = image;
-		outStream = new BufferedOutputStream(out);
+		mOutStream = new BufferedOutputStream(out);
 	}
 
 	public void compress() {
-		JpegObj = new JpegInfo(mImage);
-		imageHeight = JpegObj.imageHeight;
-		imageWidth = JpegObj.imageWidth;
-		dct = new DCT(Quality);
-		Huf = new Huffman(imageWidth, imageHeight);
-		
-		writeHeaders(outStream);
-		writeCompressedData(outStream);
-		writeEOI(outStream);
+		mJpegInfo = new JpegInfo(mImage);
+		mDCT = new DCT(mQuality);
+		mHuffman = new Huffman(mJpegInfo.imageWidth, mJpegInfo.imageHeight);
+
+		writeHeaders(mOutStream);
+		writeCompressedData(mOutStream);
+		writeEOI(mOutStream);
 		try {
-			outStream.flush();
+			mOutStream.flush();
 		} catch (IOException e) {
 			System.out.println("IO Error: " + e.getMessage());
 		}
@@ -144,34 +133,36 @@ class JpegEncoder {
 		 * entire image has been compressed.
 		 */
 
-		int lastDCvalue[] = new int[JpegObj.NumberOfComponents];
+		int lastDCvalue[] = new int[mJpegInfo.NumberOfComponents];
 		// int zeroArray[] = new int[64]; // initialized to hold all zeros
 		// int Width = 0, Height = 0;
 		// int nothing = 0, not;
 		int MinBlockWidth, MinBlockHeight;
 		// This initial setting of MinBlockWidth and MinBlockHeight is done to
 		// ensure they start with values larger than will actually be the case.
-		MinBlockWidth = ((imageWidth % 8 != 0) ? (int) (Math
-				.floor(imageWidth / 8.0) + 1) * 8 : imageWidth);
-		MinBlockHeight = ((imageHeight % 8 != 0) ? (int) (Math
-				.floor(imageHeight / 8.0) + 1) * 8 : imageHeight);
-		for (comp = 0; comp < JpegObj.NumberOfComponents; comp++) {
-			MinBlockWidth = Math.min(MinBlockWidth, JpegObj.BlockWidth[comp]);
-			MinBlockHeight = Math
-					.min(MinBlockHeight, JpegObj.BlockHeight[comp]);
+		MinBlockWidth = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math
+				.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8
+				: mJpegInfo.imageWidth);
+		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math
+				.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8
+				: mJpegInfo.imageHeight);
+		for (comp = 0; comp < mJpegInfo.NumberOfComponents; comp++) {
+			MinBlockWidth = Math.min(MinBlockWidth, mJpegInfo.BlockWidth[comp]);
+			MinBlockHeight = Math.min(MinBlockHeight,
+					mJpegInfo.BlockHeight[comp]);
 		}
 		xpos = 0;
 		for (r = 0; r < MinBlockHeight; r++) {
 			for (c = 0; c < MinBlockWidth; c++) {
 				xpos = c * 8;
 				ypos = r * 8;
-				for (comp = 0; comp < JpegObj.NumberOfComponents; comp++) {
+				for (comp = 0; comp < mJpegInfo.NumberOfComponents; comp++) {
 					// Width = JpegObj.BlockWidth[comp];
 					// Height = JpegObj.BlockHeight[comp];
-					inputArray = (float[][]) JpegObj.Components[comp];
+					inputArray = (float[][]) mJpegInfo.Components[comp];
 
-					for (i = 0; i < JpegObj.VsampFactor[comp]; i++) {
-						for (j = 0; j < JpegObj.HsampFactor[comp]; j++) {
+					for (i = 0; i < mJpegInfo.VsampFactor[comp]; i++) {
+						for (j = 0; j < mJpegInfo.HsampFactor[comp]; j++) {
 							xblockoffset = j * 8;
 							yblockoffset = i * 8;
 							for (a = 0; a < 8; a++) {
@@ -199,26 +190,26 @@ class JpegEncoder {
 							// Width - 1) &&
 							// (!JpegObj.lastRowIsDummy[comp] || r < Height -
 							// 1)) {
-							dctArray2 = dct.forwardDCT(dctArray1);
-							dctArray3 = dct.quantizeBlock(dctArray2,
-									JpegObj.QtableNumber[comp]);
+							dctArray2 = mDCT.forwardDCT(dctArray1);
+							dctArray3 = mDCT.quantizeBlock(dctArray2,
+									mJpegInfo.QtableNumber[comp]);
 							// }
 							// else {
 							// zeroArray[0] = dctArray3[0];
 							// zeroArray[0] = lastDCvalue[comp];
 							// dctArray3 = zeroArray;
 							// }
-							Huf.HuffmanBlockEncoder(outStream, dctArray3,
+							mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
 									lastDCvalue[comp],
-									JpegObj.DCtableNumber[comp],
-									JpegObj.ACtableNumber[comp]);
+									mJpegInfo.DCtableNumber[comp],
+									mJpegInfo.ACtableNumber[comp]);
 							lastDCvalue[comp] = dctArray3[0];
 						}
 					}
 				}
 			}
 		}
-		Huf.flushBuffer(outStream);
+		mHuffman.flushBuffer(outStream);
 	}
 
 	private void writeEOI(BufferedOutputStream out) {
@@ -257,17 +248,17 @@ class JpegEncoder {
 		JFIF[17] = (byte) 0x00;
 		writeArray(JFIF, out);
 
-		// Comment Header
+		// comment Header
 		String comment = "";
-		comment = JpegObj.getComment();
+		comment = mJpegInfo.getComment();
 		length = comment.length();
 		byte COM[] = new byte[length + 4];
 		COM[0] = (byte) 0xFF;
 		COM[1] = (byte) 0xFE;
 		COM[2] = (byte) ((length >> 8) & 0xFF);
 		COM[3] = (byte) (length & 0xFF);
-		java.lang.System.arraycopy(JpegObj.Comment.getBytes(), 0, COM, 4,
-				JpegObj.Comment.length());
+		java.lang.System.arraycopy(mJpegInfo.comment.getBytes(), 0, COM, 4,
+				mJpegInfo.comment.length());
 		writeArray(COM, out);
 
 		// The DQT header
@@ -280,7 +271,7 @@ class JpegEncoder {
 		offset = 4;
 		for (i = 0; i < 2; i++) {
 			DQT[offset++] = (byte) ((0 << 4) + i);
-			tempArray = (int[]) dct.quantum[i];
+			tempArray = (int[]) mDCT.quantum[i];
 			for (j = 0; j < 64; j++) {
 				DQT[offset++] = (byte) tempArray[jpegNaturalOrder[j]];
 			}
@@ -293,17 +284,17 @@ class JpegEncoder {
 		SOF[1] = (byte) 0xC0;
 		SOF[2] = (byte) 0x00;
 		SOF[3] = (byte) 17;
-		SOF[4] = (byte) JpegObj.Precision;
-		SOF[5] = (byte) ((JpegObj.imageHeight >> 8) & 0xFF);
-		SOF[6] = (byte) ((JpegObj.imageHeight) & 0xFF);
-		SOF[7] = (byte) ((JpegObj.imageWidth >> 8) & 0xFF);
-		SOF[8] = (byte) ((JpegObj.imageWidth) & 0xFF);
-		SOF[9] = (byte) JpegObj.NumberOfComponents;
+		SOF[4] = (byte) mJpegInfo.Precision;
+		SOF[5] = (byte) ((mJpegInfo.imageHeight >> 8) & 0xFF);
+		SOF[6] = (byte) ((mJpegInfo.imageHeight) & 0xFF);
+		SOF[7] = (byte) ((mJpegInfo.imageWidth >> 8) & 0xFF);
+		SOF[8] = (byte) ((mJpegInfo.imageWidth) & 0xFF);
+		SOF[9] = (byte) mJpegInfo.NumberOfComponents;
 		index = 10;
 		for (i = 0; i < SOF[9]; i++) {
-			SOF[index++] = (byte) JpegObj.CompID[i];
-			SOF[index++] = (byte) ((JpegObj.HsampFactor[i] << 4) + JpegObj.VsampFactor[i]);
-			SOF[index++] = (byte) JpegObj.QtableNumber[i];
+			SOF[index++] = (byte) mJpegInfo.CompID[i];
+			SOF[index++] = (byte) ((mJpegInfo.HsampFactor[i] << 4) + mJpegInfo.VsampFactor[i]);
+			SOF[index++] = (byte) mJpegInfo.QtableNumber[i];
 		}
 		writeArray(SOF, out);
 
@@ -319,16 +310,17 @@ class JpegEncoder {
 		DHT4[1] = (byte) 0xC4;
 		for (i = 0; i < 4; i++) {
 			bytes = 0;
-			DHT1[index++ - oldindex] = (byte) ((int[]) Huf.bits.elementAt(i))[0];
+			DHT1[index++ - oldindex] = (byte) ((int[]) mHuffman.bits
+					.elementAt(i))[0];
 			for (j = 1; j < 17; j++) {
-				temp = ((int[]) Huf.bits.elementAt(i))[j];
+				temp = ((int[]) mHuffman.bits.elementAt(i))[j];
 				DHT1[index++ - oldindex] = (byte) temp;
 				bytes += temp;
 			}
 			intermediateindex = index;
 			DHT2 = new byte[bytes];
 			for (j = 0; j < bytes; j++) {
-				DHT2[index++ - intermediateindex] = (byte) ((int[]) Huf.val
+				DHT2[index++ - intermediateindex] = (byte) ((int[]) mHuffman.val
 						.elementAt(i))[j];
 			}
 			DHT3 = new byte[index];
@@ -348,15 +340,15 @@ class JpegEncoder {
 		SOS[1] = (byte) 0xDA;
 		SOS[2] = (byte) 0x00;
 		SOS[3] = (byte) 12;
-		SOS[4] = (byte) JpegObj.NumberOfComponents;
+		SOS[4] = (byte) mJpegInfo.NumberOfComponents;
 		index = 5;
 		for (i = 0; i < SOS[4]; i++) {
-			SOS[index++] = (byte) JpegObj.CompID[i];
-			SOS[index++] = (byte) ((JpegObj.DCtableNumber[i] << 4) + JpegObj.ACtableNumber[i]);
+			SOS[index++] = (byte) mJpegInfo.CompID[i];
+			SOS[index++] = (byte) ((mJpegInfo.DCtableNumber[i] << 4) + mJpegInfo.ACtableNumber[i]);
 		}
-		SOS[index++] = (byte) JpegObj.Ss;
-		SOS[index++] = (byte) JpegObj.Se;
-		SOS[index++] = (byte) ((JpegObj.Ah << 4) + JpegObj.Al);
+		SOS[index++] = (byte) mJpegInfo.Ss;
+		SOS[index++] = (byte) mJpegInfo.Se;
+		SOS[index++] = (byte) ((mJpegInfo.Ah << 4) + mJpegInfo.Al);
 		writeArray(SOS, out);
 
 	}
@@ -427,7 +419,7 @@ class DCT {
 
 	/*
 	 * This method sets up the quantization matrix for luminance and chrominance
-	 * using the Quality parameter.
+	 * using the mQuality parameter.
 	 */
 	private void initMatrix(int quality) {
 		double[] AANscaleFactor = { 1.0, 1.387039845, 1.306562965, 1.175875602,
@@ -836,22 +828,22 @@ class Huffman {
 	private int[] bitsACchrominance = { 0x11, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4,
 			4, 0, 1, 2, 0x77 };
 
-	private int[] valACchrominance = { 0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05,
-			0x21, 0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71, 0x13, 0x22,
-			0x32, 0x81, 0x08, 0x14, 0x42, 0x91, 0xa1, 0xb1, 0xc1, 0x09, 0x23,
-			0x33, 0x52, 0xf0, 0x15, 0x62, 0x72, 0xd1, 0x0a, 0x16, 0x24, 0x34,
-			0xe1, 0x25, 0xf1, 0x17, 0x18, 0x19, 0x1a, 0x26, 0x27, 0x28, 0x29,
-			0x2a, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46,
-			0x47, 0x48, 0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59,
-			0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73, 0x74,
-			0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x82, 0x83, 0x84, 0x85, 0x86,
-			0x87, 0x88, 0x89, 0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98,
-			0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa,
-			0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3,
-			0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5,
-			0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
-			0xe8, 0xe9, 0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
-			0xfa };
+	private int[] valACchrominance = { 0x00, 0x01, 0x02, 0x03, 0x11, 0x04,
+			0x05, 0x21, 0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71, 0x13,
+			0x22, 0x32, 0x81, 0x08, 0x14, 0x42, 0x91, 0xa1, 0xb1, 0xc1, 0x09,
+			0x23, 0x33, 0x52, 0xf0, 0x15, 0x62, 0x72, 0xd1, 0x0a, 0x16, 0x24,
+			0x34, 0xe1, 0x25, 0xf1, 0x17, 0x18, 0x19, 0x1a, 0x26, 0x27, 0x28,
+			0x29, 0x2a, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45,
+			0x46, 0x47, 0x48, 0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,
+			0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73,
+			0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x82, 0x83, 0x84, 0x85,
+			0x86, 0x87, 0x88, 0x89, 0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+			0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9,
+			0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2,
+			0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4,
+			0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6,
+			0xe7, 0xe8, 0xe9, 0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8,
+			0xf9, 0xfa };
 
 	Vector<int[]> bits;
 
@@ -889,7 +881,7 @@ class Huffman {
 	 * HuffmanBlockEncoder run length encodes and Huffman encodes the quantized
 	 * data.
 	 * 
-	 * @param outStream
+	 * @param mOutStream
 	 * @param zigzag
 	 * @param prec
 	 * @param DCcode
@@ -959,7 +951,7 @@ class Huffman {
 	}
 
 	// Uses an integer long (32 bits) buffer to store the Huffman encoded bits
-	// and sends them to outStream by the byte.
+	// and sends them to mOutStream by the byte.
 
 	void bufferIt(BufferedOutputStream outStream, int code, int size) {
 		int PutBuffer = code;
@@ -1174,7 +1166,7 @@ class Huffman {
  */
 
 class JpegInfo {
-	String Comment;
+	String comment;
 
 	private Image imageobj;
 
@@ -1232,23 +1224,22 @@ class JpegInfo {
 		imageobj = image;
 		imageWidth = image.getWidth(null);
 		imageHeight = image.getHeight(null);
-		Comment = "JPEG Encoder Copyright 1998, James R. Weeks and BioElectroMech.  ";
+		comment = "JPEG Encoder Copyright 1998, James R. Weeks and BioElectroMech.  ";
 		getYCCArray();
 	}
 
 	public void setComment(String comment) {
-		Comment.concat(comment);
+		comment.concat(comment);
 	}
 
 	public String getComment() {
-		return Comment;
+		return comment;
 	}
 
 	/*
 	 * This method creates and fills three arrays, Y, Cb, and Cr using the input
 	 * image.
 	 */
-
 	private void getYCCArray() {
 		int values[] = new int[imageWidth * imageHeight];
 		int r, g, b, y, x;
@@ -1289,42 +1280,23 @@ class JpegInfo {
 			BlockHeight[y] = (int) Math.ceil(compHeight[y] / 8.0);
 		}
 		try {
-			if (grabber.grabPixels() != true) {
-				try {
-					throw new AWTException("Grabber returned false: "
-							+ grabber.status());
-				} catch (Exception e) {
-				}
-			}
+			grabber.grabPixels();
 		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
+
 		float Y[][] = new float[compHeight[0]][compWidth[0]];
 		float Cr1[][] = new float[compHeight[0]][compWidth[0]];
 		float Cb1[][] = new float[compHeight[0]][compWidth[0]];
-		// float Cb2[][] = new float[compHeight[1]][compWidth[1]];
-		// float Cr2[][] = new float[compHeight[2]][compWidth[2]];
 		int index = 0;
+
 		for (y = 0; y < imageHeight; ++y) {
 			for (x = 0; x < imageWidth; ++x) {
 				r = ((values[index] >> 16) & 0xff);
 				g = ((values[index] >> 8) & 0xff);
 				b = (values[index] & 0xff);
 
-				// The following three lines are a more correct color conversion
-				// but
-				// the current conversion technique is sufficient and results in
-				// a
-				// higher
-				// compression rate.
-				// Y[y][x] = 16 + (float)(0.8588*(0.299 * (float)r + 0.587 *
-				// (float)g +
-				// 0.114 * (float)b ));
-				// Cb1[y][x] = 128 + (float)(0.8784*(-0.16874 * (float)r -
-				// 0.33126 *
-				// (float)g + 0.5 * (float)b));
-				// Cr1[y][x] = 128 + (float)(0.8784*(0.5 * (float)r - 0.41869 *
-				// (float)g
-				// - 0.08131 * (float)b));
+				// Color Conversion
 				Y[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
 				Cb1[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b));
 				Cr1[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
@@ -1332,40 +1304,9 @@ class JpegInfo {
 			}
 		}
 
-		// Need a way to set the H and V sample factors before allowing
-		// downsampling.
-		// For now (04/04/98) downsampling must be hard coded.
-		// Until a better downsampler is implemented, this will not be done.
-		// Downsampling is currently supported. The downsampling method here
-		// is a simple box filter.
-
 		Components[0] = Y;
-		// Cb2 = DownSample(Cb1, 1);
 		Components[1] = Cb1;
-		// Cr2 = DownSample(Cr1, 2);
 		Components[2] = Cr1;
 	}
 
-	float[][] DownSample(float[][] C, int comp) {
-		int inrow, incol;
-		int outrow, outcol;
-		float output[][];
-		int bias;
-		inrow = 0;
-		incol = 0;
-		output = new float[compHeight[comp]][compWidth[comp]];
-		for (outrow = 0; outrow < compHeight[comp]; outrow++) {
-			bias = 1;
-			for (outcol = 0; outcol < compWidth[comp]; outcol++) {
-				output[outrow][outcol] = (C[inrow][incol++]
-						+ C[inrow++][incol--] + C[inrow][incol++]
-						+ C[inrow--][incol++] + bias)
-						/ (float) 4.0;
-				bias ^= 3;
-			}
-			inrow += 2;
-			incol = 0;
-		}
-		return output;
-	}
 }
