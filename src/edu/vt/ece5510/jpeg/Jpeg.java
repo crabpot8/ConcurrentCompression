@@ -176,9 +176,7 @@ class JpegEncoder {
 							int yblockoffset = i * 8;
 							for (int a = 0; a < 8; a++) {
 								for (int b = 0; b < 8; b++) {
-									dctArray1[a][b] = inputArray[ypos
-											+ yblockoffset + a][xpos
-											+ xblockoffset + b];
+									dctArray1[a][b] = inputArray[ypos	+ yblockoffset + a][xpos+ xblockoffset + b];
 								}
 							}
 							dctArray2 = mDCT.forwardDCT(dctArray1);

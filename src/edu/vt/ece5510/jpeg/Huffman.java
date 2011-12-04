@@ -148,8 +148,7 @@ class Huffman {
 				r++;
 			} else {
 				while (r > 15) {
-					bufferIt(outStream, ((int[][]) AC_matrix[ACcode])[0xF0][0],
-							((int[][]) AC_matrix[ACcode])[0xF0][1]);
+					bufferIt(outStream, ((int[][]) AC_matrix[ACcode])[0xF0][0],((int[][]) AC_matrix[ACcode])[0xF0][1]);
 					r -= 16;
 				}
 				temp2 = temp;
