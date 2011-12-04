@@ -70,7 +70,7 @@ public class Main {
 			timings.print(',');
 			timings.print(t.writingEOI);
 			timings.print(',');
-			timings.println(t.jpegInfoMethod);
+			timings.println(t.jpegInfoColorConversion);
 		}
 
 		timings.flush();

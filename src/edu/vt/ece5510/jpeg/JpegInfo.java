@@ -125,7 +125,6 @@ class JpegInfo {
 		float Cr1[][] = new float[compHeight[0]][compWidth[0]];
 		float Cb1[][] = new float[compHeight[0]][compWidth[0]];
 
-		System.out.println("Start");
 		long start = System.nanoTime();
 
 		switch (mApproach) {
@@ -163,7 +162,6 @@ class JpegInfo {
 		}
 
 		methodtime = System.nanoTime() - start;
-		System.out.println("END");
 
 		Components[0] = Y;
 		Components[1] = Cb1;
