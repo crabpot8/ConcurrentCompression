@@ -94,12 +94,17 @@ class JpegEncoder {
 	 *            compression / low filesize, and high quality means low
 	 *            compression / big filesize
 	 * @param out
-	 *            The OutputStream the resulting data should be written to.
+	 *            The OutputStream the resulting data should be written to. If
+	 *            this is not an instance of {@link BufferedOutputStream}, then
+	 *            it is wrapped with a {@link BufferedOutputStream}
 	 */
 	public JpegEncoder(Image image, int quality, OutputStream out) {
 		mQuality = quality;
 		mImage = image;
-		mOutStream = new BufferedOutputStream(out);
+		if (mOutStream instanceof BufferedOutputStream)
+			mOutStream = (BufferedOutputStream) out;
+		else
+			mOutStream = new BufferedOutputStream(out);
 	}
 
 	public void compress() {

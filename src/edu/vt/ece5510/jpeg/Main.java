@@ -11,6 +11,7 @@ import java.util.Random;
 import javax.imageio.ImageIO;
 
 import edu.vt.ece5510.jpeg.JpegEncoder.Timings;
+import edu.vt.ece5510.jpeg.JpegInfo.Approach;
 
 public class Main {
 
@@ -21,7 +22,8 @@ public class Main {
 	public static void main(String[] args) {
 
 		try {
-			doIt();
+			// timeBuildingAndWriting();
+			timeBuildingJpegInfo();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -29,9 +31,10 @@ public class Main {
 		}
 	}
 
-	public static void doIt() throws IOException, FileNotFoundException {
+	public static void timeBuildingAndWriting() throws IOException,
+			FileNotFoundException {
 		File inDir = new File(IMG_IN_DIR);
-		
+
 		PrintWriter timings = new PrintWriter(new File(TIMING_OUT_FILE));
 		timings.println("bjpeg,bdct,bhuff,wall,whead,wcd,weoi,mtime");
 
@@ -77,5 +80,45 @@ public class Main {
 		timings.close();
 
 	}
-}
 
+	public static void timeBuildingJpegInfo() throws IOException,
+			FileNotFoundException {
+		File inDir = new File(IMG_IN_DIR);
+
+		PrintWriter timings = new PrintWriter(new File(TIMING_OUT_FILE));
+		timings.println("Single,Multi");
+
+		Random r = new Random();
+		String line;
+		int progress = 1;
+		for (File currImg : inDir.listFiles()) {
+			System.gc();
+			System.out.print(".");
+			if (progress++ % 80 == 0)
+				System.out.println("");
+			line = currImg.getName();
+			BufferedImage current = ImageIO.read(currImg);
+			if (current == null)
+				continue;
+
+			int quality = r.nextInt(100) + 1;
+			JpegInfo.mApproach = Approach.SingleThread;
+			JpegEncoder e = new JpegEncoder(current, quality, new BufferedOutputStreamSink());
+			e.compress();
+
+			timings.print(e.timings.jpegInfoColorConversion);
+			timings.print(',');
+
+			JpegInfo.mApproach = Approach.ThreadPerComponent;
+			e = new JpegEncoder(current, quality, new BufferedOutputStreamSink());
+			e.compress();
+
+			timings.println(e.timings.jpegInfoColorConversion);
+		}
+
+		timings.flush();
+		timings.close();
+
+	}
+
+}

@@ -46,11 +46,11 @@ class JpegInfo {
 	private int MaxHsampFactor;
 	private int MaxVsampFactor;
 
-	private enum Approach {
+	public enum Approach {
 		SingleThread, ThreadPerComponent
 	};
 
-	private static final Approach mApproach = Approach.ThreadPerComponent;
+	public static Approach mApproach = Approach.ThreadPerComponent;
 
 	public JpegInfo(Image image) {
 		Components = new Object[NumberOfComponents];
@@ -132,6 +132,8 @@ class JpegInfo {
 			Thread ty = new Thread(new Method2Y(values, Y));
 			Thread tb = new Thread(new Method2B(values, Cb1));
 			Thread tr = new Thread(new Method2R(values, Cr1));
+			
+			start = System.nanoTime();
 			ty.start();
 			tb.start();
 			tr.start();
