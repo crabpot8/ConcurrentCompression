@@ -295,7 +295,7 @@ class DCT {
 
 			}
 		}
-		for (i = 0; i < 8; i++) {
+		/*for (i = 0; i < 8; i++) {
 			tmp0 = output[i][0] + output[i][7];
 			tmp7 = output[i][0] - output[i][7];
 			tmp1 = output[i][1] + output[i][6];
@@ -373,8 +373,8 @@ class DCT {
 			output[3][i] = z13 - z2;
 			output[1][i] = z11 + z4;
 			output[7][i] = z11 - z4;
-		}
-		/*for (i = 0; i < 8; i++) {
+		}*/
+		for (i = 0; i < 8; i++) {
 			tmp0 = output[i][0] + output[i][7];
 			tmp7 = output[i][0] - output[i][7];
 			tmp1 = output[i][1] + output[i][6];
@@ -452,7 +452,7 @@ class DCT {
 			output[3][i] = z13 - z2;
 			output[1][i] = z11 + z4;
 			output[7][i] = z11 - z4;
-		}*/
+		}
 
 		return output;
 	}
