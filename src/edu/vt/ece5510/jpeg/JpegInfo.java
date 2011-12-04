@@ -30,9 +30,8 @@ class JpegInfo {
 
 	int[] CompID = { 1, 2, 3 };
 
-	int[] HsampFactor = { 1, 1, 1 };
-
-	int[] VsampFactor = { 1, 1, 1 };
+	int[] horizSampleFactor = { 1, 1, 1 };
+	int[] vertSampleFactor = { 1, 1, 1 };
 
 	int[] QtableNumber = { 0, 1, 1 };
 
@@ -99,14 +98,14 @@ class JpegInfo {
 		MaxHsampFactor = 1;
 		MaxVsampFactor = 1;
 		for (y = 0; y < NumberOfComponents; y++) {
-			MaxHsampFactor = Math.max(MaxHsampFactor, HsampFactor[y]);
-			MaxVsampFactor = Math.max(MaxVsampFactor, VsampFactor[y]);
+			MaxHsampFactor = Math.max(MaxHsampFactor, horizSampleFactor[y]);
+			MaxVsampFactor = Math.max(MaxVsampFactor, vertSampleFactor[y]);
 		}
 		for (y = 0; y < NumberOfComponents; y++) {
 			compWidth[y] = (((imageWidth % 8 != 0) ? ((int) Math
 					.ceil(imageWidth / 8.0)) * 8 : imageWidth) / MaxHsampFactor)
-					* HsampFactor[y];
-			if (compWidth[y] != ((imageWidth / MaxHsampFactor) * HsampFactor[y])) {
+					* horizSampleFactor[y];
+			if (compWidth[y] != ((imageWidth / MaxHsampFactor) * horizSampleFactor[y])) {
 				lastColumnIsDummy[y] = true;
 			}
 			// results in a multiple of 8 for compWidth
@@ -116,8 +115,8 @@ class JpegInfo {
 			BlockWidth[y] = (int) Math.ceil(compWidth[y] / 8.0);
 			compHeight[y] = (((imageHeight % 8 != 0) ? ((int) Math
 					.ceil(imageHeight / 8.0)) * 8 : imageHeight) / MaxVsampFactor)
-					* VsampFactor[y];
-			if (compHeight[y] != ((imageHeight / MaxVsampFactor) * VsampFactor[y])) {
+					* vertSampleFactor[y];
+			if (compHeight[y] != ((imageHeight / MaxVsampFactor) * vertSampleFactor[y])) {
 				lastRowIsDummy[y] = true;
 			}
 			BlockHeight[y] = (int) Math.ceil(compHeight[y] / 8.0);
