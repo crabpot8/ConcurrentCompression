@@ -1,16 +1,11 @@
 package edu.vt.ece5510.jpeg;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FilePermission;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
@@ -45,6 +40,8 @@ public class Main {
 		for (File currImg : inDir.listFiles()) {
 			line = currImg.getName();
 			BufferedImage current = ImageIO.read(currImg);
+			if (current == null)
+				continue;
 			String outFile = IMG_OUT_DIR
 					+ line.substring(0, line.lastIndexOf(".")) + ".jpg";
 

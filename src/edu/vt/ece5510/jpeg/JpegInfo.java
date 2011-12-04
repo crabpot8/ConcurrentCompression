@@ -2,7 +2,6 @@ package edu.vt.ece5510.jpeg;
 
 import java.awt.Image;
 import java.awt.image.PixelGrabber;
-import java.util.ArrayList;
 
 /*
  * JpegInfo - Given an image, sets default information about it and divides it
