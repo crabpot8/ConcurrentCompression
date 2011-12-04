@@ -163,11 +163,15 @@ class JpegEncoder {
 		int dctArray3[] = new int[8 * 8];
 		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
 
+		// Iterate the grid of blocks
 		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
 				int xpos = blockCol * 8;
 				int ypos = blockRow * 8;
+
+				// Iterate over all components
 				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+<<<<<<< HEAD
 					float[][] inputArray = (float[][]) mJpegInfo.Components[currComponent];
 
 					for (int i = 0; i < mJpegInfo.VsampFactor[currComponent]; i++) {
@@ -189,6 +193,22 @@ class JpegEncoder {
 							lastDCvalue[currComponent] = dctArray3[0];
 						}
 					}
+=======
+					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
+
+					for (int a = 0; a < 8; a++)
+						for (int b = 0; b < 8; b++)
+							dctArray1[a][b] = componentArray[ypos + a][xpos + b];
+
+					dctArray2 = mDCT.forwardDCT(dctArray1);
+					dctArray3 = mDCT.quantizeBlock(dctArray2,
+							mJpegInfo.QtableNumber[currComponent]);
+					mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
+							lastDCvalue[currComponent],
+							mJpegInfo.DCtableNumber[currComponent],
+							mJpegInfo.ACtableNumber[currComponent]);
+					lastDCvalue[currComponent] = dctArray3[0];
+>>>>>>> 1a346c86d8bd6a89e3660472fb00aaaebbae0b21
 				}
 			}
 		}
@@ -276,7 +296,7 @@ class JpegEncoder {
 		index = 10;
 		for (i = 0; i < SOF[9]; i++) {
 			SOF[index++] = (byte) mJpegInfo.CompID[i];
-			SOF[index++] = (byte) ((mJpegInfo.HsampFactor[i] << 4) + mJpegInfo.VsampFactor[i]);
+			SOF[index++] = (byte) ((mJpegInfo.horizSampleFactor[i] << 4) + mJpegInfo.vertSampleFactor[i]);
 			SOF[index++] = (byte) mJpegInfo.QtableNumber[i];
 		}
 		writeArray(SOF, out);
