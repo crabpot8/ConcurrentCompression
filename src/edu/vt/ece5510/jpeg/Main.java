@@ -40,11 +40,12 @@ public class Main {
 		BufferedReader dataInBuffer = new BufferedReader(foo);
 
 		PrintWriter timings = new PrintWriter(new File(TIMING_OUT_FILE));
-		timings.println("bjpeg,bdct,bhuff,wall,whead,wcd,weoi");
+		timings.println("bjpeg,bdct,bhuff,wall,whead,wcd,weoi,mtime");
 
 		Random r = new Random();
 		String line;
 		while (null != (line = dataInBuffer.readLine())) {
+			System.out.println("loop");
 			BufferedImage current = ImageIO.read(new File(line));
 			int dirIndex = line.lastIndexOf('/') + 1;
 			String outFile = IMG_OUT_DIR
@@ -73,7 +74,9 @@ public class Main {
 			timings.print(',');
 			timings.print(t.writingCompressedData);
 			timings.print(',');
-			timings.println(t.writingEOI);
+			timings.print(t.writingEOI);
+			timings.print(',');
+			timings.println(t.jpegInfoMethod);
 		}
 
 		timings.flush();

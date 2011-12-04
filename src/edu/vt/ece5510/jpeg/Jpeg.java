@@ -106,6 +106,7 @@ class JpegEncoder {
 		long start = System.nanoTime();
 		mJpegInfo = new JpegInfo(mImage);
 		timings.buildingJpegInfo = System.nanoTime() - start;
+		timings.jpegInfoMethod = mJpegInfo.methodtime;
 		start = System.nanoTime();
 		mDCT = new DCT(mQuality);
 		timings.buildingDCT = System.nanoTime() - start;
@@ -365,5 +366,6 @@ class JpegEncoder {
 		long writingHeaders;
 		long writingCompressedData;
 		long writingEOI;
+		long jpegInfoMethod;
 	}
 }
