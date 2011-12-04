@@ -457,21 +457,24 @@ class DCT {
 		return output;
 	}
 
-	/*
+	/**
 	 * This method quantitizes data and rounds it to the nearest integer.
+	 * 
+	 * @param inputData
+	 *            The 8x8 matrix of input bits
+	 * @param code
+	 *            Either 0 or 1. O indicates that the numbers should be
+	 *            normalized using the luminance normalization, and 1 indicates
+	 *            they should be normalized using the chromance normalization.
+	 * 
 	 */
 	public int[] quantizeBlock(double inputData[][], int code) {
 		int outputData[] = new int[N * N];
-		int i, j;
-		int index;
-		index = 0;
-		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) {
-				// The second line results in significantly better compression.
+		int index = 0;
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
 				outputData[index] = (int) (Math.round(inputData[i][j]
 						* (((double[]) (Divisors[code]))[index])));
-				// outputData[index] = (int)(((inputData[i][j] * (((double[])
-				// (Divisors[code]))[index])) + 16384.5) -16384);
 				index++;
 			}
 		}

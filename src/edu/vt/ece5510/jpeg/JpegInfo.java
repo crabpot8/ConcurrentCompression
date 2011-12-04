@@ -2,6 +2,7 @@ package edu.vt.ece5510.jpeg;
 
 import java.awt.Image;
 import java.awt.image.PixelGrabber;
+import java.util.ArrayList;
 
 /*
  * JpegInfo - Given an image, sets default information about it and divides it
@@ -23,16 +24,12 @@ class JpegInfo {
 	Object Components[];
 
 	int[] CompID = { 1, 2, 3 };
-<<<<<<< HEAD
-	int[] HsampFactor = { 1, 1, 1 };
-	int[] VsampFactor = { 1, 1, 1 };
-=======
 
 	int[] horizSampleFactor = { 1, 1, 1 };
 	int[] vertSampleFactor = { 1, 1, 1 };
 
->>>>>>> 1a346c86d8bd6a89e3660472fb00aaaebbae0b21
-	int[] QtableNumber = { 0, 1, 1 };
+	int[] quantizeTableNumbers = { 0, 1, 1 };
+
 	int[] DCtableNumber = { 0, 1, 1 };
 	int[] ACtableNumber = { 0, 1, 1 };
 
@@ -87,29 +84,19 @@ class JpegInfo {
 			MaxVsampFactor = Math.max(MaxVsampFactor, vertSampleFactor[y]);
 		}
 		for (y = 0; y < NumberOfComponents; y++) {
-<<<<<<< HEAD
-			compWidth[y] = (((imageWidth % 8 != 0) ? ((int) Math.ceil(imageWidth / 8.0)) * 8 : imageWidth) / MaxHsampFactor)* HsampFactor[y];
-			if (compWidth[y] != ((imageWidth / MaxHsampFactor) * HsampFactor[y])) {
-=======
-			compWidth[y] = (((imageWidth % 8 != 0) ? ((int) Math
+		compWidth[y] = (((imageWidth % 8 != 0) ? ((int) Math
 					.ceil(imageWidth / 8.0)) * 8 : imageWidth) / MaxHsampFactor)
 					* horizSampleFactor[y];
 			if (compWidth[y] != ((imageWidth / MaxHsampFactor) * horizSampleFactor[y])) {
->>>>>>> 1a346c86d8bd6a89e3660472fb00aaaebbae0b21
 				lastColumnIsDummy[y] = true;
 			}
 			// results in a multiple of 8 for compWidth; this will make the rest of the program fail for the unlikely
 			// event that someone tries to compress an 16 x 16 pixel image which would of course be worse than pointless
 			BlockWidth[y] = (int) Math.ceil(compWidth[y] / 8.0);
-<<<<<<< HEAD
-			compHeight[y] = (((imageHeight % 8 != 0) ? ((int) Math.ceil(imageHeight / 8.0)) * 8 : imageHeight) / MaxVsampFactor)* VsampFactor[y];
-			if (compHeight[y] != ((imageHeight / MaxVsampFactor) * VsampFactor[y])) {
-=======
 			compHeight[y] = (((imageHeight % 8 != 0) ? ((int) Math
 					.ceil(imageHeight / 8.0)) * 8 : imageHeight) / MaxVsampFactor)
 					* vertSampleFactor[y];
 			if (compHeight[y] != ((imageHeight / MaxVsampFactor) * vertSampleFactor[y])) {
->>>>>>> 1a346c86d8bd6a89e3660472fb00aaaebbae0b21
 				lastRowIsDummy[y] = true;
 			}
 			BlockHeight[y] = (int) Math.ceil(compHeight[y] / 8.0);
@@ -119,8 +106,32 @@ class JpegInfo {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-
+		
+		//method 1
 		float Y[][] = new float[compHeight[0]][compWidth[0]];
+		float Cr1[][] = new float[compHeight[0]][compWidth[0]];
+		float Cb1[][] = new float[compHeight[0]][compWidth[0]];
+		
+		ArrayList<Thread> threads = new ArrayList<Thread>();
+		for (y = 0; y < imageHeight; ++y) {
+			for (x = 0; x < imageWidth; ++x) {
+				Thread t = new Thread(new Method1(values, x, y, Y, Cb1, Cr1));
+				threads.add(t);
+				t.start();
+			}
+		}
+		for(Thread t : threads){
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		Components[0] = Y;
+		Components[1] = Cb1;
+		Components[2] = Cr1;
+		/*float Y[][] = new float[compHeight[0]][compWidth[0]];
 		float Cr1[][] = new float[compHeight[0]][compWidth[0]];
 		float Cb1[][] = new float[compHeight[0]][compWidth[0]];
 		int index = 0;
@@ -137,11 +148,111 @@ class JpegInfo {
 				Cr1[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
 				index++;
 			}
+		}*/
+
+		/*Components[0] = Y;
+		Components[1] = Cb1;
+		Components[2] = Cr1;*/
+	}
+	
+	public class Method1 implements Runnable {
+			
+		int[] values;
+		public int x;
+		public int y;
+		public float[][] Cy,Cb,Cr;
+		
+		public Method1(int[] val, int x_, int y_, float[][] cy, float[][] cb, float[][] cr){
+			values = val;
+			x = x_;
+			y = y_;
+			Cy = cy;
+			Cb = cb;
+			Cr = cr;
 		}
 
-		Components[0] = Y;
-		Components[1] = Cb1;
-		Components[2] = Cr1;
+		@Override
+		public void run() {
+			int index = y * imageWidth + x;
+			int r = ((values[index] >> 16) & 0xff);
+			int g = ((values[index] >> 8) & 0xff);
+			int b = (values[index] & 0xff);
+
+			// Color Conversion
+			Cy[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
+			Cb[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b));
+			Cr[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
+			
+		}
 	}
+	
+public class Method2Y implements Runnable{
+		
+	int[] values;
+	float[][] Y;
+	
+		public Method2Y(int[] val,float[][] mat){
+			values = val;
+			Y = mat;
+		}
+		
+		public void run(){
+			for (int y = 0; y < imageHeight; ++y) {
+				for (int x = 0; x < imageWidth; ++x) {
+					int index = y * imageWidth + x;
+					int r = ((values[index] >> 16) & 0xff);
+					int g = ((values[index] >> 8) & 0xff);
+					int b = (values[index] & 0xff);	
+					Y[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
+				}
+			}
+		}
+	}
+
+public class Method2B implements Runnable{
+	
+	int[] values;
+	float[][] Cb;
+	
+	public Method2B(int[] val,float[][] mat){
+		values = val;
+		Cb= mat;
+	}
+	
+	public void run(){
+		for (int y = 0; y < imageHeight; ++y) {
+			for (int x = 0; x < imageWidth; ++x) {
+				int index = y * imageWidth + x;
+				int r = ((values[index] >> 16) & 0xff);
+				int g = ((values[index] >> 8) & 0xff);
+				int b = (values[index] & 0xff);	
+				Cb[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b));
+			}
+		}
+	}
+}
+
+public class Method2R implements Runnable{
+	
+	int[] values;
+	float[][] Cr;
+	
+	public Method2R(int[] val,float[][] mat){
+		values = val;
+		Cr = mat;
+	}
+	
+	public void run(){
+		for (int y = 0; y < imageHeight; ++y) {
+			for (int x = 0; x < imageWidth; ++x) {
+				int index = y * imageWidth + x;
+				int r = ((values[index] >> 16) & 0xff);
+				int g = ((values[index] >> 8) & 0xff);
+				int b = (values[index] & 0xff);	
+				Cr[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
+			}
+		}
+	}
+}
 
 }

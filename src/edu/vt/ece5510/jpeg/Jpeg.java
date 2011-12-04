@@ -171,29 +171,7 @@ class JpegEncoder {
 
 				// Iterate over all components
 				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
-<<<<<<< HEAD
-					float[][] inputArray = (float[][]) mJpegInfo.Components[currComponent];
 
-					for (int i = 0; i < mJpegInfo.VsampFactor[currComponent]; i++) {
-						for (int j = 0; j < mJpegInfo.HsampFactor[currComponent]; j++) {
-							int xblockoffset = j * 8;
-							int yblockoffset = i * 8;
-							for (int a = 0; a < 8; a++) {
-								for (int b = 0; b < 8; b++) {
-									dctArray1[a][b] = inputArray[ypos	+ yblockoffset + a][xpos+ xblockoffset + b];
-								}
-							}
-							dctArray2 = mDCT.forwardDCT(dctArray1);
-							dctArray3 = mDCT.quantizeBlock(dctArray2,
-									mJpegInfo.QtableNumber[currComponent]);
-							mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
-									lastDCvalue[currComponent],
-									mJpegInfo.DCtableNumber[currComponent],
-									mJpegInfo.ACtableNumber[currComponent]);
-							lastDCvalue[currComponent] = dctArray3[0];
-						}
-					}
-=======
 					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
 
 					for (int a = 0; a < 8; a++)
@@ -202,13 +180,12 @@ class JpegEncoder {
 
 					dctArray2 = mDCT.forwardDCT(dctArray1);
 					dctArray3 = mDCT.quantizeBlock(dctArray2,
-							mJpegInfo.QtableNumber[currComponent]);
+							mJpegInfo.quantizeTableNumbers[currComponent]);
 					mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
 							lastDCvalue[currComponent],
 							mJpegInfo.DCtableNumber[currComponent],
 							mJpegInfo.ACtableNumber[currComponent]);
 					lastDCvalue[currComponent] = dctArray3[0];
->>>>>>> 1a346c86d8bd6a89e3660472fb00aaaebbae0b21
 				}
 			}
 		}
@@ -297,7 +274,7 @@ class JpegEncoder {
 		for (i = 0; i < SOF[9]; i++) {
 			SOF[index++] = (byte) mJpegInfo.CompID[i];
 			SOF[index++] = (byte) ((mJpegInfo.horizSampleFactor[i] << 4) + mJpegInfo.vertSampleFactor[i]);
-			SOF[index++] = (byte) mJpegInfo.QtableNumber[i];
+			SOF[index++] = (byte) mJpegInfo.quantizeTableNumbers[i];
 		}
 		writeArray(SOF, out);
 

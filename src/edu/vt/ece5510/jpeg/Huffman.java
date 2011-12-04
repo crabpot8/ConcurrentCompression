@@ -76,7 +76,7 @@ class Huffman {
 
 	Vector<int[]> val;
 
-	/*
+	/**
 	 * jpegNaturalOrder[i] is the natural-order position of the i'th element of
 	 * zigzag order.
 	 */
@@ -110,18 +110,16 @@ class Huffman {
 	 * 
 	 * @param mOutStream
 	 * @param zigzag
-	 * @param prec
+	 * @param prevDCcoeff
 	 * @param DCcode
 	 * @param ACcode
 	 */
-
 	public void HuffmanBlockEncoder(BufferedOutputStream outStream,
-			int zigzag[], int prec, int DCcode, int ACcode) {
+			int zigzag[], int prevDCcoeff, int DCcode, int ACcode) {
 		int temp, temp2, nbits, k, r, i;
 
 		// The DC portion
-
-		temp = temp2 = zigzag[0] - prec;
+		temp = temp2 = zigzag[0] - prevDCcoeff;
 		if (temp < 0) {
 			temp = -temp;
 			temp2--;
@@ -131,16 +129,16 @@ class Huffman {
 			nbits++;
 			temp >>= 1;
 		}
-		// if (nbits > 11) nbits = 11;
 		bufferIt(outStream, ((int[][]) DC_matrix[DCcode])[nbits][0],
 				((int[][]) DC_matrix[DCcode])[nbits][1]);
+
 		// The arguments in bufferIt are code and size.
+		// Is this writing an EOB mark? 
 		if (nbits != 0) {
 			bufferIt(outStream, temp2, nbits);
 		}
 
 		// The AC portion
-
 		r = 0;
 
 		for (k = 1; k < 64; k++) {
@@ -176,9 +174,14 @@ class Huffman {
 
 	}
 
-	// Uses an integer long (32 bits) buffer to store the Huffman encoded bits
-	// and sends them to mOutStream by the byte.
-
+	/**
+	 * Uses an integer long (32 bits) buffer to store the Huffman encoded bits
+	 * and sends them to mOutStream by the byte.
+	 * 
+	 * @param outStream
+	 * @param code
+	 * @param size
+	 */
 	void bufferIt(BufferedOutputStream outStream, int code, int size) {
 		int PutBuffer = code;
 		int PutBits = bufferPutBits;
@@ -207,7 +210,6 @@ class Huffman {
 		}
 		bufferPutBuffer = PutBuffer;
 		bufferPutBits = PutBits;
-
 	}
 
 	void flushBuffer(BufferedOutputStream outStream) {
