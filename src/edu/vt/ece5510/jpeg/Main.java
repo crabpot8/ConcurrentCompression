@@ -93,6 +93,8 @@ public class Main {
 
 		timings.flush();
 		timings.close();
+		writeTimings.flush();
+		writeTimings.close();
 
 	}
 }
