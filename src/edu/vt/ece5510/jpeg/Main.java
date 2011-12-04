@@ -20,7 +20,7 @@ import edu.vt.ece5510.jpeg.JpegEncoder.Timings;
 public class Main {
 
 	private static final String IMG_OUT_DIR = "data/out/";
-	private static final String IMG_IN_FILE = "data/summary.txt";
+	private static final String IMG_IN_DIR = "data/in/";
 	private static final String TIMING_OUT_FILE = "data/timings.csv";
 
 	public static void main(String[] args) {
@@ -35,21 +35,18 @@ public class Main {
 	}
 
 	public static void doIt() throws IOException, FileNotFoundException {
-		FileInputStream dataIn = new FileInputStream(new File(IMG_IN_FILE));
-		InputStreamReader foo = new InputStreamReader(dataIn);
-		BufferedReader dataInBuffer = new BufferedReader(foo);
-
+		File inDir = new File(IMG_IN_DIR);
+		
 		PrintWriter timings = new PrintWriter(new File(TIMING_OUT_FILE));
 		timings.println("bjpeg,bdct,bhuff,wall,whead,wcd,weoi,mtime");
 
 		Random r = new Random();
 		String line;
-		while (null != (line = dataInBuffer.readLine())) {
-			System.out.println("loop");
-			BufferedImage current = ImageIO.read(new File(line));
-			int dirIndex = line.lastIndexOf('/') + 1;
+		for (File currImg : inDir.listFiles()) {
+			line = currImg.getName();
+			BufferedImage current = ImageIO.read(currImg);
 			String outFile = IMG_OUT_DIR
-					+ line.substring(dirIndex, line.lastIndexOf(".")) + ".jpg";
+					+ line.substring(0, line.lastIndexOf(".")) + ".jpg";
 
 			JpegEncoder e = new JpegEncoder(current, r.nextInt(100) + 1,
 					new FileOutputStream(outFile));
@@ -84,3 +81,4 @@ public class Main {
 
 	}
 }
+

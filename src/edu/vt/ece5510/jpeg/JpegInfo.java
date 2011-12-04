@@ -4,11 +4,9 @@ import java.awt.Image;
 import java.awt.image.PixelGrabber;
 import java.util.ArrayList;
 
-import edu.vt.ece5510.jpeg.JpegEncoder.Timings;
-
 /*
  * JpegInfo - Given an image, sets default information about it and divides it
- * into its constituant components, downsizing those that need to be.
+ * into its constituent components, downsizing those that need to be.
  */
 class JpegInfo {
 
@@ -48,6 +46,12 @@ class JpegInfo {
 	private int compWidth[], compHeight[];
 	private int MaxHsampFactor;
 	private int MaxVsampFactor;
+
+	private enum Approach {
+		SingleThread, ThreadPerComponent
+	};
+
+	private static final Approach mApproach = Approach.ThreadPerComponent;
 
 	public JpegInfo(Image image) {
 		Components = new Object[NumberOfComponents];
@@ -124,94 +128,47 @@ class JpegInfo {
 
 		System.out.println("Start");
 		long start = System.nanoTime();
-		
-		// method 1
-		ArrayList<Thread> threads = new ArrayList<Thread>();
-		for (y = 0; y < imageHeight; ++y) {
-			for (x = 0; x < imageWidth; ++x) {
-				Thread t = new Thread(new Method1(values, x, y, Y, Cb1, Cr1));
-				threads.add(t);
-				t.start();
-			}
-		}
-		for (Thread t : threads) {
+
+		switch (mApproach) {
+		case ThreadPerComponent:
+			Thread ty = new Thread(new Method2Y(values, Y));
+			Thread tb = new Thread(new Method2B(values, Cb1));
+			Thread tr = new Thread(new Method2R(values, Cr1));
+			ty.start();
+			tb.start();
+			tr.start();
 			try {
-				t.join();
+				ty.join();
+				tb.join();
+				tr.join();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+			break;
+		case SingleThread:
+			int index = 0;
+			for (y = 0; y < imageHeight; ++y) {
+				for (x = 0; x < imageWidth; ++x) {
+					r = ((values[index] >> 16) & 0xff);
+					g = ((values[index] >> 8) & 0xff);
+					b = (values[index] & 0xff);
+
+					// Color Conversion
+					Y[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
+					Cb1[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b));
+					Cr1[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
+					index++;
+				}
+			}
+			break;
 		}
 
-		// method 2
-		/*
-		 Thread ty = new Thread(new Method2Y(values, Y)); 
-		 Thread tb = new Thread(new Method2B(values, Cb1)); 
-		 Thread tr = new Thread(new Method2R(values, Cr1)); 
-		 ty.start(); 
-		 tb.start(); 
-		 tr.start(); 
-		 try {
-		 	ty.join(); tb.join(); tr.join(); 
-		 } catch (InterruptedException e) {
-		 	e.printStackTrace(); 
-		 }*/
-		 
-
-		
-
-		//original
-		/*int index = 0;
-		for (y = 0; y < imageHeight; ++y) { 
-			for (x = 0; x < imageWidth; ++x) { 
-				r = ((values[index] >> 16) & 0xff); 
-				g = ((values[index] >> 8) & 0xff); 
-				b = (values[index] & 0xff);
-		  
-		 // Color Conversion 
-		 Y[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b)); 
-		 Cb1[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b)); 
-		 Cr1[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b)); 
-		 index++; } }
-		 */
-		
 		methodtime = System.nanoTime() - start;
 		System.out.println("END");
 
 		Components[0] = Y;
 		Components[1] = Cb1;
 		Components[2] = Cr1;
-	}
-
-	public class Method1 implements Runnable {
-
-		int[] values;
-		public int x;
-		public int y;
-		public float[][] Cy, Cb, Cr;
-
-		public Method1(int[] val, int x_, int y_, float[][] cy, float[][] cb,float[][] cr) {
-			values = val;
-			x = x_;
-			y = y_;
-			Cy = cy;
-			Cb = cb;
-			Cr = cr;
-		}
-
-		@Override
-		public void run() {
-			//System.out.println("Start " + x + "," + y);
-			int index = y * imageWidth + x;
-			int r = ((values[index] >> 16) & 0xff);
-			int g = ((values[index] >> 8) & 0xff);
-			int b = (values[index] & 0xff);
-
-			// Color Conversion
-			Cy[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
-			Cb[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b));
-			Cr[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
-
-		}
 	}
 
 	public class Method2Y implements Runnable {
