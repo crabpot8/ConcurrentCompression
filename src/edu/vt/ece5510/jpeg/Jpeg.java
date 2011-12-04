@@ -105,32 +105,46 @@ class JpegEncoder {
 	public void compress() {
 		long start = System.nanoTime();
 		mJpegInfo = new JpegInfo(mImage);
-		System.out.println("JPEG took " + (System.nanoTime() - start));
+		timings.buildingJpegInfo = System.nanoTime() - start;
 		start = System.nanoTime();
 		mDCT = new DCT(mQuality);
-		System.out.println("DCT took " + (System.nanoTime() - start));
+		timings.buildingDCT = System.nanoTime() - start;
 		start = System.nanoTime();
 		mHuffman = new Huffman(mJpegInfo.imageWidth, mJpegInfo.imageHeight);
-		System.out.println("Huff took " + (System.nanoTime() - start));
+		timings.buildingHuffman = System.nanoTime() - start;
 		start = System.nanoTime();
 
 		writeHeaders(mOutStream);
-		System.out.println("Headers took " + (System.nanoTime() - start));
+		try {
+			mOutStream.flush();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		timings.writingHeaders = System.nanoTime() - start;
 		start = System.nanoTime();
 
 		writeCompressedData(mOutStream);
-		System.out.println("CD took " + (System.nanoTime() - start));
+		try {
+			mOutStream.flush();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		timings.writingCompressedData = System.nanoTime() - start;
 		start = System.nanoTime();
 
 		writeEOI(mOutStream);
-
-		System.out.println("EOI took " + (System.nanoTime() - start));
-		start = System.nanoTime();
-
 		try {
 			mOutStream.flush();
 		} catch (IOException e) {
-			System.out.println("IO Error: " + e.getMessage());
+			e.printStackTrace();
+		}
+		timings.writingEOI = System.nanoTime() - start;
+		timings.writingAll = timings.writingCompressedData + timings.writingEOI
+				+ timings.writingHeaders;
+		try {
+			mOutStream.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -339,5 +353,17 @@ class JpegEncoder {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+	}
+
+	public Timings timings = new Timings();
+
+	public class Timings {
+		long buildingJpegInfo;
+		long buildingDCT;
+		long buildingHuffman;
+		long writingAll;
+		long writingHeaders;
+		long writingCompressedData;
+		long writingEOI;
 	}
 }

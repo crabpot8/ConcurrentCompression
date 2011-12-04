@@ -1,0 +1,7 @@
+data/in/dice.png
+data/in/Wall-E.gif
+data/in/dw-wally.png
+data/in/master.png
+data/in/dw.png
+data/in/psych.bmp
+data/in/psych2.bmp
