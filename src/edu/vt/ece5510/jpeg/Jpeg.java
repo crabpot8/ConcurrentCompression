@@ -103,9 +103,16 @@ class JpegEncoder {
 	}
 
 	public void compress() {
+		long start = System.nanoTime();
 		mJpegInfo = new JpegInfo(mImage);
+		System.out.println("JPEG took " + (System.nanoTime() - start));
+		start = System.nanoTime();
 		mDCT = new DCT(mQuality);
+		System.out.println("DCT took " + (System.nanoTime() - start));
+		start = System.nanoTime();
 		mHuffman = new Huffman(mJpegInfo.imageWidth, mJpegInfo.imageHeight);
+		System.out.println("Huff took " + (System.nanoTime() - start));
+		start = System.nanoTime();
 
 		writeHeaders(mOutStream);
 		writeCompressedData(mOutStream);
@@ -115,6 +122,7 @@ class JpegEncoder {
 		} catch (IOException e) {
 			System.out.println("IO Error: " + e.getMessage());
 		}
+		System.out.println("Write took " + (System.nanoTime() - start));
 	}
 
 	private void writeCompressedData(BufferedOutputStream outStream) {
@@ -131,10 +139,7 @@ class JpegEncoder {
 		 * entire image has been compressed.
 		 */
 
-		int lastDCvalue[] = new int[mJpegInfo.NumberOfComponents];
-		// int zeroArray[] = new int[64]; // initialized to hold all zeros
-		// int Width = 0, Height = 0;
-		// int nothing = 0, not;
+		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
 		int MinBlockWidth, MinBlockHeight;
 		// This initial setting of MinBlockWidth and MinBlockHeight is done to
 		// ensure they start with values larger than will actually be the case.
@@ -144,7 +149,7 @@ class JpegEncoder {
 		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math
 				.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8
 				: mJpegInfo.imageHeight);
-		for (comp = 0; comp < mJpegInfo.NumberOfComponents; comp++) {
+		for (comp = 0; comp < JpegInfo.NumberOfComponents; comp++) {
 			MinBlockWidth = Math.min(MinBlockWidth, mJpegInfo.BlockWidth[comp]);
 			MinBlockHeight = Math.min(MinBlockHeight,
 					mJpegInfo.BlockHeight[comp]);
@@ -154,7 +159,7 @@ class JpegEncoder {
 			for (c = 0; c < MinBlockWidth; c++) {
 				xpos = c * 8;
 				ypos = r * 8;
-				for (comp = 0; comp < mJpegInfo.NumberOfComponents; comp++) {
+				for (comp = 0; comp < JpegInfo.NumberOfComponents; comp++) {
 					// Width = JpegObj.BlockWidth[comp];
 					// Height = JpegObj.BlockHeight[comp];
 					inputArray = (float[][]) mJpegInfo.Components[comp];
@@ -282,12 +287,12 @@ class JpegEncoder {
 		SOF[1] = (byte) 0xC0;
 		SOF[2] = (byte) 0x00;
 		SOF[3] = (byte) 17;
-		SOF[4] = (byte) mJpegInfo.Precision;
+		SOF[4] = (byte) JpegInfo.Precision;
 		SOF[5] = (byte) ((mJpegInfo.imageHeight >> 8) & 0xFF);
 		SOF[6] = (byte) ((mJpegInfo.imageHeight) & 0xFF);
 		SOF[7] = (byte) ((mJpegInfo.imageWidth >> 8) & 0xFF);
 		SOF[8] = (byte) ((mJpegInfo.imageWidth) & 0xFF);
-		SOF[9] = (byte) mJpegInfo.NumberOfComponents;
+		SOF[9] = (byte) JpegInfo.NumberOfComponents;
 		index = 10;
 		for (i = 0; i < SOF[9]; i++) {
 			SOF[index++] = (byte) mJpegInfo.CompID[i];
@@ -338,7 +343,7 @@ class JpegEncoder {
 		SOS[1] = (byte) 0xDA;
 		SOS[2] = (byte) 0x00;
 		SOS[3] = (byte) 12;
-		SOS[4] = (byte) mJpegInfo.NumberOfComponents;
+		SOS[4] = (byte) JpegInfo.NumberOfComponents;
 		index = 5;
 		for (i = 0; i < SOS[4]; i++) {
 			SOS[index++] = (byte) mJpegInfo.CompID[i];
@@ -359,25 +364,11 @@ class JpegEncoder {
 		}
 	}
 
-	private void writeArray(byte[] data, BufferedOutputStream out) {
-		int length;
+	private static void writeArray(byte[] data, BufferedOutputStream out) {
 		try {
-			length = ((data[2] & 0xFF) << 8) + (data[3] & 0xFF) + 2;
-			out.write(data, 0, length);
-		} catch (IOException e) {
-			System.out.println("IO Error: " + e.getMessage());
+			out.write(data);
+		} catch (IOException e1) {
+			e1.printStackTrace();
 		}
 	}
 }
-
-// This class incorporates quality scaling as implemented in the JPEG-6a
-// library.
-
-
-
-
-
-/*
- * JpegInfo - Given an image, sets default information about it and divides it
- * into its constituant components, downsizing those that need to be.
- */

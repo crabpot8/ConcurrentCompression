@@ -3,7 +3,17 @@ package edu.vt.ece5510.jpeg;
 import java.awt.Image;
 import java.awt.image.PixelGrabber;
 
+/*
+ * JpegInfo - Given an image, sets default information about it and divides it
+ * into its constituant components, downsizing those that need to be.
+ */
 class JpegInfo {
+
+	// the following are set as the default
+	static final int Precision = 8;
+
+	static final int NumberOfComponents = 3;
+
 	String comment;
 
 	private Image imageobj;
@@ -15,11 +25,6 @@ class JpegInfo {
 	int BlockWidth[];
 
 	int BlockHeight[];
-
-	// the following are set as the default
-	int Precision = 8;
-
-	int NumberOfComponents = 3;
 
 	Object Components[];
 
