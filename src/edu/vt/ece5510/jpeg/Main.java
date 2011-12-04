@@ -18,8 +18,9 @@ public class Main {
 
 	private static final String IMG_OUT_DIR = "data/out/";
 	private static final String IMG_IN_DIR = "data/in/";
-	private static final String TIMING_OUT_FILE = "data/timings.csv";
-	private static final String WRITE_TIMING_OUT_FILE = "data/writeTimings.csv";
+	private static final String OUT_JPEG_COLOR_CONVERSION = "data/color_conversion_timings.csv";
+	private static final String OUT_WRITE_COMPRESSED_DATA_TIMINGS = "data/write_compressed_data_timings.csv";
+	private static final String OUT_BUILDING_AND_WRITING = "data/building_and_writing.csv";
 
 	public static void main(String[] args) {
 
@@ -37,10 +38,12 @@ public class Main {
 			FileNotFoundException {
 		File inDir = new File(IMG_IN_DIR);
 
-		PrintWriter timings = new PrintWriter(new File(TIMING_OUT_FILE));
+		PrintWriter timings = new PrintWriter(new File(OUT_BUILDING_AND_WRITING));
 		timings.println("bjpeg,bdct,bhuff,wall,whead,wcd,weoi,mtime");
-		PrintWriter writeTimings = new PrintWriter(new File(WRITE_TIMING_OUT_FILE));
-		writeTimings.println("setup,blockTime,generateDCT,forwardDCT,quantizeDCT,huffman");
+		PrintWriter writeTimings = new PrintWriter(new File(
+				OUT_WRITE_COMPRESSED_DATA_TIMINGS));
+		writeTimings
+				.println("setup,blockTime,generateDCT,forwardDCT,quantizeDCT,huffman");
 
 		Random r = new Random();
 		String line;
@@ -78,7 +81,7 @@ public class Main {
 			timings.print(t.writingEOI);
 			timings.print(',');
 			timings.println(t.jpegInfoColorConversion);
-			
+
 			WriteTimings w = e.writeTimings;
 			writeTimings.print(w.setup);
 			writeTimings.print(',');
@@ -105,32 +108,34 @@ public class Main {
 			FileNotFoundException {
 		File inDir = new File(IMG_IN_DIR);
 
-		PrintWriter timings = new PrintWriter(new File(TIMING_OUT_FILE));
+		PrintWriter timings = new PrintWriter(new File(OUT_JPEG_COLOR_CONVERSION));
 		timings.println("Single,Multi");
 
 		Random r = new Random();
-		String line;
+
 		int progress = 1;
 		for (File currImg : inDir.listFiles()) {
 			System.gc();
 			System.out.print(".");
 			if (progress++ % 80 == 0)
 				System.out.println("");
-			line = currImg.getName();
+
 			BufferedImage current = ImageIO.read(currImg);
 			if (current == null)
 				continue;
 
 			int quality = r.nextInt(100) + 1;
 			JpegInfo.mApproach = Approach.SingleThread;
-			JpegEncoder e = new JpegEncoder(current, quality, new BufferedOutputStreamSink());
+			JpegEncoder e = new JpegEncoder(current, quality,
+					new BufferedOutputStreamSink());
 			e.compress();
 
 			timings.print(e.timings.jpegInfoColorConversion);
 			timings.print(',');
 
 			JpegInfo.mApproach = Approach.ThreadPerComponent;
-			e = new JpegEncoder(current, quality, new BufferedOutputStreamSink());
+			e = new JpegEncoder(current, quality,
+					new BufferedOutputStreamSink());
 			e.compress();
 
 			timings.println(e.timings.jpegInfoColorConversion);
