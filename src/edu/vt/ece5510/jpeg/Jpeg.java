@@ -115,23 +115,26 @@ class JpegEncoder {
 		start = System.nanoTime();
 
 		writeHeaders(mOutStream);
+		System.out.println("Headers took " + (System.nanoTime() - start));
+		start = System.nanoTime();
+
 		writeCompressedData(mOutStream);
+		System.out.println("CD took " + (System.nanoTime() - start));
+		start = System.nanoTime();
+
 		writeEOI(mOutStream);
+
+		System.out.println("EOI took " + (System.nanoTime() - start));
+		start = System.nanoTime();
+
 		try {
 			mOutStream.flush();
 		} catch (IOException e) {
 			System.out.println("IO Error: " + e.getMessage());
 		}
-		System.out.println("Write took " + (System.nanoTime() - start));
 	}
 
 	private void writeCompressedData(BufferedOutputStream outStream) {
-		int i, j, r, c, a, b;
-		int comp, xpos, ypos, xblockoffset, yblockoffset;
-		float inputArray[][];
-		float dctArray1[][] = new float[8][8];
-		double dctArray2[][] = new double[8][8];
-		int dctArray3[] = new int[8 * 8];
 
 		/*
 		 * This method controls the compression of the image. Starting at the
@@ -139,74 +142,53 @@ class JpegEncoder {
 		 * entire image has been compressed.
 		 */
 
-		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
-		int MinBlockWidth, MinBlockHeight;
-		// This initial setting of MinBlockWidth and MinBlockHeight is done to
-		// ensure they start with values larger than will actually be the case.
+		// Setup the block width and height
+		int MinBlockWidth, MinBlockHeight, currComponent;
+
 		MinBlockWidth = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math
 				.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8
 				: mJpegInfo.imageWidth);
 		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math
 				.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8
 				: mJpegInfo.imageHeight);
-		for (comp = 0; comp < JpegInfo.NumberOfComponents; comp++) {
-			MinBlockWidth = Math.min(MinBlockWidth, mJpegInfo.BlockWidth[comp]);
+		for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+			MinBlockWidth = Math.min(MinBlockWidth,
+					mJpegInfo.BlockWidth[currComponent]);
 			MinBlockHeight = Math.min(MinBlockHeight,
-					mJpegInfo.BlockHeight[comp]);
+					mJpegInfo.BlockHeight[currComponent]);
 		}
-		xpos = 0;
-		for (r = 0; r < MinBlockHeight; r++) {
-			for (c = 0; c < MinBlockWidth; c++) {
-				xpos = c * 8;
-				ypos = r * 8;
-				for (comp = 0; comp < JpegInfo.NumberOfComponents; comp++) {
-					// Width = JpegObj.BlockWidth[comp];
-					// Height = JpegObj.BlockHeight[comp];
-					inputArray = (float[][]) mJpegInfo.Components[comp];
 
-					for (i = 0; i < mJpegInfo.VsampFactor[comp]; i++) {
-						for (j = 0; j < mJpegInfo.HsampFactor[comp]; j++) {
-							xblockoffset = j * 8;
-							yblockoffset = i * 8;
-							for (a = 0; a < 8; a++) {
-								for (b = 0; b < 8; b++) {
+		float dctArray1[][] = new float[8][8];
+		double dctArray2[][] = new double[8][8];
+		int dctArray3[] = new int[8 * 8];
+		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
 
-									// I believe this is where the dirty line at
-									// the bottom of
-									// the image is coming from.
-									// I need to do a check here to make sure
-									// I'm not reading past
-									// image data.
-									// This seems to not be a big issue right
-									// now. (04/04/98)
+		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
+			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
+				int xpos = blockCol * 8;
+				int ypos = blockRow * 8;
+				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+					float[][] inputArray = (float[][]) mJpegInfo.Components[currComponent];
 
+					for (int i = 0; i < mJpegInfo.VsampFactor[currComponent]; i++) {
+						for (int j = 0; j < mJpegInfo.HsampFactor[currComponent]; j++) {
+							int xblockoffset = j * 8;
+							int yblockoffset = i * 8;
+							for (int a = 0; a < 8; a++) {
+								for (int b = 0; b < 8; b++) {
 									dctArray1[a][b] = inputArray[ypos
 											+ yblockoffset + a][xpos
 											+ xblockoffset + b];
 								}
 							}
-							// The following code commented out because on some
-							// images this
-							// technique
-							// results in poor right and bottom borders.
-							// if ((!JpegObj.lastColumnIsDummy[comp] || c <
-							// Width - 1) &&
-							// (!JpegObj.lastRowIsDummy[comp] || r < Height -
-							// 1)) {
 							dctArray2 = mDCT.forwardDCT(dctArray1);
 							dctArray3 = mDCT.quantizeBlock(dctArray2,
-									mJpegInfo.QtableNumber[comp]);
-							// }
-							// else {
-							// zeroArray[0] = dctArray3[0];
-							// zeroArray[0] = lastDCvalue[comp];
-							// dctArray3 = zeroArray;
-							// }
+									mJpegInfo.QtableNumber[currComponent]);
 							mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
-									lastDCvalue[comp],
-									mJpegInfo.DCtableNumber[comp],
-									mJpegInfo.ACtableNumber[comp]);
-							lastDCvalue[comp] = dctArray3[0];
+									lastDCvalue[currComponent],
+									mJpegInfo.DCtableNumber[currComponent],
+									mJpegInfo.ACtableNumber[currComponent]);
+							lastDCvalue[currComponent] = dctArray3[0];
 						}
 					}
 				}
