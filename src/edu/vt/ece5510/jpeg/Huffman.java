@@ -114,13 +114,11 @@ class Huffman {
 	 * @param DCcode
 	 * @param ACcode
 	 */
-
 	public void HuffmanBlockEncoder(BufferedOutputStream outStream,
 			int zigzag[], int prec, int DCcode, int ACcode) {
 		int temp, temp2, nbits, k, r, i;
 
 		// The DC portion
-
 		temp = temp2 = zigzag[0] - prec;
 		if (temp < 0) {
 			temp = -temp;
@@ -131,16 +129,15 @@ class Huffman {
 			nbits++;
 			temp >>= 1;
 		}
-		// if (nbits > 11) nbits = 11;
 		bufferIt(outStream, ((int[][]) DC_matrix[DCcode])[nbits][0],
 				((int[][]) DC_matrix[DCcode])[nbits][1]);
+
 		// The arguments in bufferIt are code and size.
 		if (nbits != 0) {
 			bufferIt(outStream, temp2, nbits);
 		}
 
 		// The AC portion
-
 		r = 0;
 
 		for (k = 1; k < 64; k++) {

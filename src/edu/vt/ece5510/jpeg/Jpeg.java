@@ -179,7 +179,7 @@ class JpegEncoder {
 
 					dctArray2 = mDCT.forwardDCT(dctArray1);
 					dctArray3 = mDCT.quantizeBlock(dctArray2,
-							mJpegInfo.QtableNumber[currComponent]);
+							mJpegInfo.quantizeTableNumbers[currComponent]);
 					mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
 							lastDCvalue[currComponent],
 							mJpegInfo.DCtableNumber[currComponent],
@@ -273,7 +273,7 @@ class JpegEncoder {
 		for (i = 0; i < SOF[9]; i++) {
 			SOF[index++] = (byte) mJpegInfo.CompID[i];
 			SOF[index++] = (byte) ((mJpegInfo.horizSampleFactor[i] << 4) + mJpegInfo.vertSampleFactor[i]);
-			SOF[index++] = (byte) mJpegInfo.QtableNumber[i];
+			SOF[index++] = (byte) mJpegInfo.quantizeTableNumbers[i];
 		}
 		writeArray(SOF, out);
 

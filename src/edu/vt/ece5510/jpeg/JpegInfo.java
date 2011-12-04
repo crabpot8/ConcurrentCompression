@@ -33,7 +33,7 @@ class JpegInfo {
 	int[] horizSampleFactor = { 1, 1, 1 };
 	int[] vertSampleFactor = { 1, 1, 1 };
 
-	int[] QtableNumber = { 0, 1, 1 };
+	int[] quantizeTableNumbers = { 0, 1, 1 };
 
 	int[] DCtableNumber = { 0, 1, 1 };
 
