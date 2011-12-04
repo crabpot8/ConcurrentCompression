@@ -162,51 +162,56 @@ class JpegEncoder {
 		 * entire image has been compressed.
 		 */
 
+		long start = System.nanoTime();
 		// Setup the block width and height
 		int MinBlockWidth, MinBlockHeight, currComponent;
+		
 
-		MinBlockWidth = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math
-				.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8
-				: mJpegInfo.imageWidth);
-		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math
-				.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8
-				: mJpegInfo.imageHeight);
+		MinBlockWidth = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8: mJpegInfo.imageWidth);
+		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8: mJpegInfo.imageHeight);
 		for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
-			MinBlockWidth = Math.min(MinBlockWidth,
-					mJpegInfo.BlockWidth[currComponent]);
-			MinBlockHeight = Math.min(MinBlockHeight,
-					mJpegInfo.BlockHeight[currComponent]);
+			MinBlockWidth = Math.min(MinBlockWidth,mJpegInfo.BlockWidth[currComponent]);
+			MinBlockHeight = Math.min(MinBlockHeight,	mJpegInfo.BlockHeight[currComponent]);
 		}
 
 		float dctArray1[][] = new float[8][8];
 		double dctArray2[][] = new double[8][8];
 		int dctArray3[] = new int[8 * 8];
 		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
+		writeTimings.setup = System.nanoTime() - start;
+		
 
 		// Iterate the grid of blocks
 		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
 				int xpos = blockCol * 8;
 				int ypos = blockRow * 8;
-
+				
+				long loop = System.nanoTime();
 				// Iterate over all components
 				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
 					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
 
-					for (int a = 0; a < 8; a++)
-						for (int b = 0; b < 8; b++)
+					start = System.nanoTime();
+					for (int a = 0; a < 8; a++) {
+						for (int b = 0; b < 8; b++) {
 							dctArray1[a][b] = componentArray[ypos + a][xpos + b];
-
+						}
+					}
+					writeTimings.generateDCT = writeTimings.generateDCT + System.nanoTime() - start;
+					start = System.nanoTime();
 					dctArray2 = mDCT.forwardDCT(dctArray1);
-					dctArray3 = mDCT.quantizeBlock(dctArray2,
-							mJpegInfo.quantizeTableNumbers[currComponent]);
-					mHuffman.HuffmanBlockEncoder(outStream, dctArray3,
-							lastDCvalue[currComponent],
-							mJpegInfo.DCtableNumber[currComponent],
-							mJpegInfo.ACtableNumber[currComponent]);
+					writeTimings.forwardDCT = writeTimings.forwardDCT + System.nanoTime() - start;
+					start = System.nanoTime();
+					dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[currComponent]);
+					writeTimings.quantizeDCT = writeTimings.quantizeDCT + System.nanoTime() - start;
+					start = System.nanoTime();
+					mHuffman.HuffmanBlockEncoder(outStream, dctArray3,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
+					writeTimings.huffman = writeTimings.huffman + System.nanoTime() - start;
 					lastDCvalue[currComponent] = dctArray3[0];
 				}
+				writeTimings.blockTime = writeTimings.blockTime  + System.nanoTime() - loop;
 			}
 		}
 		mHuffman.flushBuffer(outStream);
@@ -372,5 +377,16 @@ class JpegEncoder {
 		long writingCompressedData;
 		long writingEOI;
 		long jpegInfoColorConversion;
+	}
+	
+	public WriteTimings writeTimings = new WriteTimings();
+	
+	public class WriteTimings {
+		public long blockTime = 0;
+		public long huffman = 0;
+		public long quantizeDCT = 0;
+		public long forwardDCT = 0;
+		public long generateDCT = 0;
+		long setup = 0;
 	}
 }
