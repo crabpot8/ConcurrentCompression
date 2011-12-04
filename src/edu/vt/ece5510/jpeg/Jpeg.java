@@ -217,7 +217,7 @@ class JpegEncoder {
 
 	private void writeEOI(BufferedOutputStream out) {
 		byte[] EOI = { (byte) 0xFF, (byte) 0xD9 };
-		writeMarker(EOI, out);
+		writeArray(EOI, out);
 	}
 
 	private void writeHeaders(BufferedOutputStream out) {
@@ -226,7 +226,7 @@ class JpegEncoder {
 
 		// the SOI marker
 		byte[] SOI = { (byte) 0xFF, (byte) 0xD8 };
-		writeMarker(SOI, out);
+		writeArray(SOI, out);
 
 		// The order of the following headers is quiet inconsequential.
 		// the JFIF header
@@ -354,14 +354,6 @@ class JpegEncoder {
 		SOS[index++] = (byte) ((mJpegInfo.Ah << 4) + mJpegInfo.Al);
 		writeArray(SOS, out);
 
-	}
-
-	private void writeMarker(byte[] data, BufferedOutputStream out) {
-		try {
-			out.write(data, 0, 2);
-		} catch (IOException e) {
-			System.out.println("IO Error: " + e.getMessage());
-		}
 	}
 
 	private static void writeArray(byte[] data, BufferedOutputStream out) {
