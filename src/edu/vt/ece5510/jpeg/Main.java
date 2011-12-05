@@ -25,8 +25,8 @@ public class Main {
 	public static void main(String[] args) {
 
 		try {
-			// timeBuildingAndWriting();
-			timeBuildingJpegInfo();
+			 timeBuildingAndWriting();
+			//timeBuildingJpegInfo();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -116,7 +116,8 @@ public class Main {
 		int progress = 1;
 		for (File currImg : inDir.listFiles()) {
 			System.gc();
-			System.out.print(".");
+			//System.out.print(".");
+			System.out.println(currImg.getName());
 			if (progress++ % 80 == 0)
 				System.out.println("");
 
