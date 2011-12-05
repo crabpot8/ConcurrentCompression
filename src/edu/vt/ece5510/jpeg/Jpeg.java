@@ -40,6 +40,9 @@ import java.awt.Image;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 // Version 1.0a
 // Copyright (C) 1998, James R. Weeks and BioElectroMech.
@@ -174,15 +177,104 @@ class JpegEncoder {
 			MinBlockHeight = Math.min(MinBlockHeight,	mJpegInfo.BlockHeight[currComponent]);
 		}
 
-		float dctArray1[][] = new float[8][8];
+		/*float dctArray1[][] = new float[8][8];
 		double dctArray2[][] = new double[8][8];
-		int dctArray3[] = new int[8 * 8];
+		int dctArray3[] = new int[8 * 8];*/
 		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
+		
 		writeTimings.setup = System.nanoTime() - start;
 		
-
-		// Iterate the grid of blocks
+		int numBlocks = MinBlockWidth * MinBlockHeight;
+		AtomicInteger count = new AtomicInteger(numBlocks);
+		HashMap<Integer,AtomicReference<Boolean>> done = new HashMap<Integer, AtomicReference<Boolean>>(numBlocks);
+		for(int i = 0; i < numBlocks; i++){
+			done.put(i, new AtomicReference<Boolean>(false));
+		}
+		//int hugeDCTa3[][] = new int[3][64*MinBlockWidth*MinBlockHeight];
+		int multiDCTa3[][][] = new int[JpegInfo.NumberOfComponents][numBlocks][];
+		
+	//	int nThreads = System.ge
+		
+		/*// Iterate the grid of blocks
 		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
+			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
+				int xpos = blockCol * 8;
+				int ypos = blockRow * 8;
+				
+				// Iterate over all components
+				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+
+					//get component array
+					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
+
+					//parse out block position
+					for (int a = 0; a < 8; a++) {
+						for (int b = 0; b < 8; b++) {
+							dctArray1[a][b] = componentArray[ypos + a][xpos + b];
+						}
+					}
+					dctArray2 = mDCT.forwardDCT(dctArray1);
+					dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[currComponent]);
+					multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol] = dctArray3;
+				}
+			}
+		}*/
+		
+		
+		
+		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
+			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
+				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+
+					int[] blockArray = multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol];
+					mHuffman.HuffmanBlockEncoder(outStream, blockArray,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
+					lastDCvalue[currComponent] = blockArray[0];
+				}
+			}
+		}
+		mHuffman.flushBuffer(outStream);
+	}
+	
+	public AtomicInteger counter;
+	
+	public class handleDCT implements Runnable{
+
+		private int mComp;
+		private int mRow;
+		private int mCol;
+		private int[][][] mStorage;
+		private int mWidth;
+		
+		public handleDCT(int comp, int row, int col, int[][][] storage, int width){
+			mComp = comp;
+			mRow = row;
+			mCol = col;
+			mStorage = storage;
+			mWidth = width;
+		}
+		
+		@Override
+		public void run() {
+			float[][] componentArray = (float[][]) mJpegInfo.Components[mComp];
+
+			float dctArray1[][] = new float[8][8];
+			double dctArray2[][] = new double[8][8];
+			int dctArray3[] = new int[8 * 8];
+			
+			//parse out block position
+			for (int a = 0; a < 8; a++) {
+				for (int b = 0; b < 8; b++) {
+					dctArray1[a][b] = componentArray[(mRow*8) + a][(mCol*8) + b];
+				}
+			}
+			dctArray2 = mDCT.forwardDCT(dctArray1);
+			dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[mComp]);
+			mStorage[mComp][mRow*mWidth + mCol] = dctArray3;
+		}
+		
+	}
+		// Iterate the grid of blocks
+		/*for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
 				int xpos = blockCol * 8;
 				int ypos = blockRow * 8;
@@ -215,7 +307,7 @@ class JpegEncoder {
 			}
 		}
 		mHuffman.flushBuffer(outStream);
-	}
+	}*/
 
 	private void writeEOI(BufferedOutputStream out) {
 		byte[] EOI = { (byte) 0xFF, (byte) 0xD9 };
