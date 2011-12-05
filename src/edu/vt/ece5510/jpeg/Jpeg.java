@@ -204,7 +204,7 @@ class JpegEncoder {
 				// Iterate over all components
 				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
-					//get component array
+					// Get component array
 					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
 
 					//parse out block position
@@ -227,7 +227,10 @@ class JpegEncoder {
 				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
 					int[] blockArray = multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol];
-					mHuffman.HuffmanBlockEncoder(outStream, blockArray,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
+					mHuffman.HuffmanBlockEncoder(outStream, blockArray,
+							lastDCvalue[currComponent],
+							mJpegInfo.DCtableNumber[currComponent],
+							mJpegInfo.ACtableNumber[currComponent]);
 					lastDCvalue[currComponent] = blockArray[0];
 				}
 			}
@@ -235,7 +238,7 @@ class JpegEncoder {
 		mHuffman.flushBuffer(outStream);
 	}
 	
-	public AtomicInteger counter;
+	/*public AtomicInteger counter;
 	
 	public class handleDCT implements Runnable{
 
@@ -272,7 +275,7 @@ class JpegEncoder {
 			mStorage[mComp][mRow*mWidth + mCol] = dctArray3;
 		}
 		
-	}
+	}*/
 		// Iterate the grid of blocks
 		/*for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {

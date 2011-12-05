@@ -2,6 +2,7 @@ package edu.vt.ece5510.jpeg;
 
 import java.awt.Image;
 import java.awt.image.PixelGrabber;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * JpegInfo - Given an image, sets default information about it and divides it
@@ -34,9 +35,6 @@ class JpegInfo {
 	int[] DCtableNumber = { 0, 1, 1 };
 	int[] ACtableNumber = { 0, 1, 1 };
 
-	private boolean[] lastColumnIsDummy = { false, false, false };
-	private boolean[] lastRowIsDummy = { false, false, false };
-
 	int Ss = 0;
 	int Se = 63;
 	int Ah = 0;
@@ -47,10 +45,10 @@ class JpegInfo {
 	private int MaxVsampFactor;
 
 	public enum Approach {
-		SingleThread, ThreadPerComponent
+		SingleThread, ColumnColorConvert
 	};
 
-	public static Approach mApproach = Approach.ThreadPerComponent;
+	public static Approach mApproach = Approach.ColumnColorConvert;
 
 	public JpegInfo(Image image) {
 		Components = new Object[NumberOfComponents];
@@ -78,17 +76,7 @@ class JpegInfo {
 	 * image.
 	 */
 	private void getYCCArray() {
-		int values[] = new int[imageWidth * imageHeight];
 		int r, g, b, y, x;
-		// In order to minimize the chance that grabPixels will throw an
-		// exception
-		// it may be necessary to grab some pixels every few scanlines and
-		// process
-		// those before going for more. The time expense may be prohibitive.
-		// However, for a situation where memory overhead is a concern, this may
-		// be the only choice.
-		PixelGrabber grabber = new PixelGrabber(imageobj.getSource(), 0, 0,
-				imageWidth, imageHeight, values, 0, imageWidth);
 		MaxHsampFactor = 1;
 		MaxVsampFactor = 1;
 		for (y = 0; y < NumberOfComponents; y++) {
@@ -99,9 +87,7 @@ class JpegInfo {
 			compWidth[y] = (((imageWidth % 8 != 0) ? ((int) Math
 					.ceil(imageWidth / 8.0)) * 8 : imageWidth) / MaxHsampFactor)
 					* horizSampleFactor[y];
-			if (compWidth[y] != ((imageWidth / MaxHsampFactor) * horizSampleFactor[y])) {
-				lastColumnIsDummy[y] = true;
-			}
+
 			// results in a multiple of 8 for compWidth; this will make the rest
 			// of the program fail for the unlikely
 			// event that someone tries to compress an 16 x 16 pixel image which
@@ -110,15 +96,7 @@ class JpegInfo {
 			compHeight[y] = (((imageHeight % 8 != 0) ? ((int) Math
 					.ceil(imageHeight / 8.0)) * 8 : imageHeight) / MaxVsampFactor)
 					* vertSampleFactor[y];
-			if (compHeight[y] != ((imageHeight / MaxVsampFactor) * vertSampleFactor[y])) {
-				lastRowIsDummy[y] = true;
-			}
 			BlockHeight[y] = (int) Math.ceil(compHeight[y] / 8.0);
-		}
-		try {
-			grabber.grabPixels();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
 		}
 
 		float Y[][] = new float[compHeight[0]][compWidth[0]];
@@ -128,24 +106,40 @@ class JpegInfo {
 		long start = System.nanoTime();
 
 		switch (mApproach) {
-		case ThreadPerComponent:
-			Thread ty = new Thread(new Method2Y(values, Y));
-			Thread tb = new Thread(new Method2B(values, Cb1));
-			Thread tr = new Thread(new Method2R(values, Cr1));
-			
+		case ColumnColorConvert:
+
+			AtomicInteger columnCounter = new AtomicInteger(0);
+			int threadCount = 4;
+			Thread[] threads = new Thread[threadCount];
+			for (int i = 0; i < threadCount; i++)
+				threads[i] = new Thread(new RowColorConvertor(columnCounter,
+						imageobj, Y, Cr1, Cb1, compHeight[0], compWidth[0]));
+
 			start = System.nanoTime();
-			ty.start();
-			tb.start();
-			tr.start();
+			for (int i = 0; i < threadCount; i++)
+				threads[i].start();
+
 			try {
-				ty.join();
-				tb.join();
-				tr.join();
+				for (int i = 0; i < threadCount; i++)
+					threads[i].join();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+			System.out.println("");
+
 			break;
 		case SingleThread:
+
+			int values[] = new int[imageWidth * imageHeight];
+
+			PixelGrabber grabber = new PixelGrabber(imageobj.getSource(), 0, 0,
+					imageWidth, imageHeight, values, 0, imageWidth);
+			try {
+				grabber.grabPixels();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
 			int index = 0;
 			for (y = 0; y < imageHeight; ++y) {
 				for (x = 0; x < imageWidth; ++x) {
@@ -170,73 +164,85 @@ class JpegInfo {
 		Components[2] = Cr1;
 	}
 
-	public class Method2Y implements Runnable {
+	/**
+	 * Grabs the next column that needs its colors converted. Creates a
+	 * PixelGrabber to extract the pixels it wants from the image, and writes
+	 * the results to the proper locations in the passed in Y, Cr, Cb arrays
+	 * 
+	 * @author hamiltont
+	 * 
+	 */
+	private class RowColorConvertor implements Runnable {
+		private Image mImage;
+		private float[][] mY;
+		private float[][] mCr;
+		private float[][] mCb;
+		private AtomicInteger rowCounter;
+		private int mMaxRows;
+		private int mRowWidth;
 
-		int[] values;
-		float[][] Y;
-
-		public Method2Y(int[] val, float[][] mat) {
-			values = val;
-			Y = mat;
+		public RowColorConvertor(AtomicInteger columnCounter, Image i,
+				float[][] Y, float[][] Cr, float[][] Cb, int maxRows,
+				int rowWidth) {
+			mImage = i;
+			mY = Y;
+			mCr = Cr;
+			mCb = Cb;
+			this.rowCounter = columnCounter;
+			mMaxRows = maxRows;
+			mRowWidth = rowWidth;
 		}
 
+		@Override
 		public void run() {
-			for (int y = 0; y < imageHeight; ++y) {
-				for (int x = 0; x < imageWidth; ++x) {
-					int index = y * imageWidth + x;
-					int r = ((values[index] >> 16) & 0xff);
-					int g = ((values[index] >> 8) & 0xff);
-					int b = (values[index] & 0xff);
-					Y[y][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
+			int currentRow = 0;
+			int[] values = new int[mRowWidth];
+
+			long grabTime = 0;
+			long convertTime = 0;
+			int totalRows = 0;
+
+			while (mMaxRows > (currentRow = rowCounter.getAndIncrement())) {
+
+				totalRows++;
+				long start = System.nanoTime();
+				PixelGrabber grabber = new PixelGrabber(mImage.getSource(), // Source
+						0, // The x location to start at
+						currentRow, // The y location to start at
+						mRowWidth, // The width of data to grab
+						1, // The height of data to grab
+						values, // Array to store the data into
+						0, // The offset to store the data at
+						mRowWidth // Distance between the start of two rows in
+									// the array
+				);
+
+				try {
+					grabber.grabPixels();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
-			}
-		}
-	}
+				grabTime += System.nanoTime() - start;
 
-	public class Method2B implements Runnable {
+				start = System.nanoTime();
+				for (int x = 0; x < mRowWidth; ++x) {
+					int r = ((values[x] >> 16) & 0xff);
+					int g = ((values[x] >> 8) & 0xff);
+					int b = (values[x] & 0xff);
 
-		int[] values;
-		float[][] Cb;
-
-		public Method2B(int[] val, float[][] mat) {
-			values = val;
-			Cb = mat;
-		}
-
-		public void run() {
-			for (int y = 0; y < imageHeight; ++y) {
-				for (int x = 0; x < imageWidth; ++x) {
-					int index = y * imageWidth + x;
-					int r = ((values[index] >> 16) & 0xff);
-					int g = ((values[index] >> 8) & 0xff);
-					int b = (values[index] & 0xff);
-					Cb[y][x] = 128 + (float) ((-0.16874 * r - 0.33126 * g + 0.5 * b));
+					// Color Conversion
+					mY[currentRow][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
+					mCb[currentRow][x] = 128 + (float) ((-0.16874 * r - 0.33126
+							* g + 0.5 * b));
+					mCr[currentRow][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
 				}
+				convertTime += System.nanoTime() - start;
 			}
-		}
-	}
 
-	public class Method2R implements Runnable {
-
-		int[] values;
-		float[][] Cr;
-
-		public Method2R(int[] val, float[][] mat) {
-			values = val;
-			Cr = mat;
+			System.out.println("Handled " + totalRows + ", taking " + grabTime
+					+ "ns for grab and " + convertTime + "ns for convert");
 		}
 
-		public void run() {
-			for (int y = 0; y < imageHeight; ++y) {
-				for (int x = 0; x < imageWidth; ++x) {
-					int index = y * imageWidth + x;
-					int r = ((values[index] >> 16) & 0xff);
-					int g = ((values[index] >> 8) & 0xff);
-					int b = (values[index] & 0xff);
-					Cr[y][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
-				}
-			}
-		}
 	}
 
 }

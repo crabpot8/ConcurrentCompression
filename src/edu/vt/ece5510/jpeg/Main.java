@@ -25,8 +25,8 @@ public class Main {
 	public static void main(String[] args) {
 
 		try {
-			 timeBuildingAndWriting();
-			//timeBuildingJpegInfo();
+			 //timeBuildingAndWriting();
+			timeBuildingJpegInfo();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -47,7 +47,13 @@ public class Main {
 
 		Random r = new Random();
 		String line;
+		int progress = 1;
 		for (File currImg : inDir.listFiles()) {
+			System.gc();
+			System.out.print(".");
+			if (progress++ % 80 == 0)
+				System.out.println("");
+
 			line = currImg.getName();
 			BufferedImage current = ImageIO.read(currImg);
 			if (current == null)
@@ -58,10 +64,6 @@ public class Main {
 			JpegEncoder e = new JpegEncoder(current, r.nextInt(100) + 1,
 					new FileOutputStream(outFile));
 
-			// modify this to write everything into memory, and then return that
-			// memory so that the FileIO does not get included in the timing
-			// information. In fact, the test can likely avoid writing output
-			// files at all?
 			e.compress();
 
 			Timings t = e.timings;
@@ -116,8 +118,7 @@ public class Main {
 		int progress = 1;
 		for (File currImg : inDir.listFiles()) {
 			System.gc();
-			//System.out.print(".");
-			System.out.println(currImg.getName());
+			System.out.print(".");
 			if (progress++ % 80 == 0)
 				System.out.println("");
 
@@ -134,7 +135,7 @@ public class Main {
 			timings.print(e.timings.jpegInfoColorConversion);
 			timings.print(',');
 
-			JpegInfo.mApproach = Approach.ThreadPerComponent;
+			JpegInfo.mApproach = Approach.ColumnColorConvert;
 			e = new JpegEncoder(current, quality,
 					new BufferedOutputStreamSink());
 			e.compress();
