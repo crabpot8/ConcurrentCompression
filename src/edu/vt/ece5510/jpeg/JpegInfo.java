@@ -99,21 +99,30 @@ class JpegInfo {
 			BlockHeight[y] = (int) Math.ceil(compHeight[y] / 8.0);
 		}
 
+		int values[] = new int[imageWidth * imageHeight];
+
+		PixelGrabber grabber = new PixelGrabber(imageobj.getSource(), 0, 0,
+				imageWidth, imageHeight, values, 0, imageWidth);
+		try {
+			grabber.grabPixels();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
 		float Y[][] = new float[compHeight[0]][compWidth[0]];
 		float Cr1[][] = new float[compHeight[0]][compWidth[0]];
 		float Cb1[][] = new float[compHeight[0]][compWidth[0]];
 
 		long start = System.nanoTime();
-
 		switch (mApproach) {
 		case ColumnColorConvert:
 
-			AtomicInteger columnCounter = new AtomicInteger(0);
+			AtomicInteger rowCounter = new AtomicInteger(0);
 			int threadCount = 4;
 			Thread[] threads = new Thread[threadCount];
 			for (int i = 0; i < threadCount; i++)
-				threads[i] = new Thread(new RowColorConvertor(columnCounter,
-						imageobj, Y, Cr1, Cb1, compHeight[0], compWidth[0]));
+				threads[i] = new Thread(new RowColorConvertor(values,
+						imageWidth, imageHeight, rowCounter, Y, Cr1, Cb1));
 
 			start = System.nanoTime();
 			for (int i = 0; i < threadCount; i++)
@@ -125,21 +134,9 @@ class JpegInfo {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			System.out.println("");
 
 			break;
 		case SingleThread:
-
-			int values[] = new int[imageWidth * imageHeight];
-
-			PixelGrabber grabber = new PixelGrabber(imageobj.getSource(), 0, 0,
-					imageWidth, imageHeight, values, 0, imageWidth);
-			try {
-				grabber.grabPixels();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
 			int index = 0;
 			for (y = 0; y < imageHeight; ++y) {
 				for (x = 0; x < imageWidth; ++x) {
@@ -173,74 +170,59 @@ class JpegInfo {
 	 * 
 	 */
 	private class RowColorConvertor implements Runnable {
-		private Image mImage;
+		private int[] mRGB;
 		private float[][] mY;
 		private float[][] mCr;
 		private float[][] mCb;
 		private AtomicInteger rowCounter;
-		private int mMaxRows;
+		private int mRowCount;
 		private int mRowWidth;
 
-		public RowColorConvertor(AtomicInteger columnCounter, Image i,
-				float[][] Y, float[][] Cr, float[][] Cb, int maxRows,
-				int rowWidth) {
-			mImage = i;
+		public RowColorConvertor(int[] rgb, int rowWidth,
+				int rowCount, AtomicInteger columnCounter, float[][] Y,
+				float[][] Cr, float[][] Cb) {
+			mRGB = rgb;
+			mRowCount = rowCount;
+			mRowWidth = rowWidth;
+
 			mY = Y;
 			mCr = Cr;
 			mCb = Cb;
 			this.rowCounter = columnCounter;
-			mMaxRows = maxRows;
-			mRowWidth = rowWidth;
 		}
 
 		@Override
 		public void run() {
 			int currentRow = 0;
-			int[] values = new int[mRowWidth];
 
-			long grabTime = 0;
 			long convertTime = 0;
 			int totalRows = 0;
 
-			while (mMaxRows > (currentRow = rowCounter.getAndIncrement())) {
+			while (mRowCount > (currentRow = rowCounter.getAndIncrement())) {
 
-				totalRows++;
-				long start = System.nanoTime();
-				PixelGrabber grabber = new PixelGrabber(mImage.getSource(), // Source
-						0, // The x location to start at
-						currentRow, // The y location to start at
-						mRowWidth, // The width of data to grab
-						1, // The height of data to grab
-						values, // Array to store the data into
-						0, // The offset to store the data at
-						mRowWidth // Distance between the start of two rows in
-									// the array
-				);
+				//totalRows++;
+				
+				int base = currentRow * mRowWidth;
+				//long start = System.nanoTime();
 
-				try {
-					grabber.grabPixels();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				grabTime += System.nanoTime() - start;
-
-				start = System.nanoTime();
 				for (int x = 0; x < mRowWidth; ++x) {
-					int r = ((values[x] >> 16) & 0xff);
-					int g = ((values[x] >> 8) & 0xff);
-					int b = (values[x] & 0xff);
+					int index = x + base;
+					int r = ((mRGB[index] >> 16) & 0xff);
+					int g = ((mRGB[index] >> 8) & 0xff);
+					int b = (mRGB[index] & 0xff);
 
 					// Color Conversion
 					mY[currentRow][x] = (float) ((0.299 * r + 0.587 * g + 0.114 * b));
-					mCb[currentRow][x] = 128 + (float) ((-0.16874 * r - 0.33126
-							* g + 0.5 * b));
-					mCr[currentRow][x] = 128 + (float) ((0.5 * r - 0.41869 * g - 0.08131 * b));
+					mCb[currentRow][x] = 128 + (float) ((-0.16874 * r
+							- 0.33126 * g + 0.5 * b));
+					mCr[currentRow][x] = 128 + (float) ((0.5 * r - 0.41869
+							* g - 0.08131 * b));
 				}
-				convertTime += System.nanoTime() - start;
+				//convertTime += System.nanoTime() - start;
 			}
 
-			System.out.println("Handled " + totalRows + ", taking " + grabTime
-					+ "ns for grab and " + convertTime + "ns for convert");
+			//System.out.println("Handled " + totalRows + ", taking " + grabTime
+			//		+ "ns for grab and " + convertTime + "ns for convert");
 		}
 
 	}
