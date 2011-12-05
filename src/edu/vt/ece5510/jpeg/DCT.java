@@ -7,7 +7,7 @@ class DCT {
 	/**
 	 * DCT Block Size - default 8
 	 */
-	private int N = 8;
+	private static final int N = 8;
 
 	Object quantum[] = new Object[2];
 
