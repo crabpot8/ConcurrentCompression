@@ -177,25 +177,25 @@ class JpegEncoder {
 			MinBlockHeight = Math.min(MinBlockHeight,	mJpegInfo.BlockHeight[currComponent]);
 		}
 
-		/*float dctArray1[][] = new float[8][8];
+		float dctArray1[][] = new float[8][8];
 		double dctArray2[][] = new double[8][8];
-		int dctArray3[] = new int[8 * 8];*/
+		int dctArray3[] = new int[8 * 8];
 		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
 		
 		writeTimings.setup = System.nanoTime() - start;
 		
 		int numBlocks = MinBlockWidth * MinBlockHeight;
-		AtomicInteger count = new AtomicInteger(numBlocks);
+		/*AtomicInteger count = new AtomicInteger(numBlocks);
 		HashMap<Integer,AtomicReference<Boolean>> done = new HashMap<Integer, AtomicReference<Boolean>>(numBlocks);
 		for(int i = 0; i < numBlocks; i++){
 			done.put(i, new AtomicReference<Boolean>(false));
-		}
+		}*/
 		//int hugeDCTa3[][] = new int[3][64*MinBlockWidth*MinBlockHeight];
 		int multiDCTa3[][][] = new int[JpegInfo.NumberOfComponents][numBlocks][];
 		
 	//	int nThreads = System.ge
 		
-		/*// Iterate the grid of blocks
+		// Iterate the grid of blocks
 		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
 				int xpos = blockCol * 8;
@@ -218,7 +218,7 @@ class JpegEncoder {
 					multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol] = dctArray3;
 				}
 			}
-		}*/
+		}
 		
 		
 		
