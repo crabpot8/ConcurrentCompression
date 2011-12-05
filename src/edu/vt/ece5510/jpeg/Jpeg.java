@@ -86,6 +86,8 @@ class JpegEncoder {
 			14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37,
 			44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62,
 			63, };
+	
+	public static final int NUMBER_THREADS = 5;
 
 	/**
 	 * 
@@ -167,42 +169,49 @@ class JpegEncoder {
 
 		long start = System.nanoTime();
 		// Setup the block width and height
-		int MinBlockWidth, MinBlockHeight, currComponent;
-		
+		final int MinBlockWidth, MinBlockHeight;
+		int tempMBW, tempMBH;
 
-		MinBlockWidth = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8: mJpegInfo.imageWidth);
-		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8: mJpegInfo.imageHeight);
-		for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
-			MinBlockWidth = Math.min(MinBlockWidth,mJpegInfo.BlockWidth[currComponent]);
-			MinBlockHeight = Math.min(MinBlockHeight,	mJpegInfo.BlockHeight[currComponent]);
+		tempMBW = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8: mJpegInfo.imageWidth);
+		tempMBH = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8: mJpegInfo.imageHeight);
+		for (int currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+			tempMBW = Math.min(tempMBW,mJpegInfo.BlockWidth[currComponent]);
+			tempMBH= Math.min(tempMBH,	mJpegInfo.BlockHeight[currComponent]);
 		}
+		
+		MinBlockWidth = tempMBW;
+		MinBlockHeight = tempMBH;
 
-		float dctArray1[][] = new float[8][8];
+		/*float dctArray1[][] = new float[8][8];
 		double dctArray2[][] = new double[8][8];
-		int dctArray3[] = new int[8 * 8];
+		int dctArray3[] = new int[8 * 8];*/
 		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
 		
 		writeTimings.setup = System.nanoTime() - start;
 		
 		int numBlocks = MinBlockWidth * MinBlockHeight;
-		/*AtomicInteger count = new AtomicInteger(numBlocks);
+		AtomicInteger count = new AtomicInteger(numBlocks);
 		HashMap<Integer,AtomicReference<Boolean>> done = new HashMap<Integer, AtomicReference<Boolean>>(numBlocks);
 		for(int i = 0; i < numBlocks; i++){
 			done.put(i, new AtomicReference<Boolean>(false));
-		}*/
+		}
 		//int hugeDCTa3[][] = new int[3][64*MinBlockWidth*MinBlockHeight];
 		int multiDCTa3[][][] = new int[JpegInfo.NumberOfComponents][numBlocks][];
 		
-	//	int nThreads = System.ge
+		//ArrayList<Thread> threads = new ArrayList<Thread>(NUMBER_THREADS);
+		for(int i = 0; i < NUMBER_THREADS; i++){
+			Thread t = new Thread(new dataGrabber(multiDCTa3, count, MinBlockWidth, numBlocks, done));
+			t.start();
+		}
 		
 		// Iterate the grid of blocks
-		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
+		/*for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
 				int xpos = blockCol * 8;
 				int ypos = blockRow * 8;
 				
 				// Iterate over all components
-				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+				for (int currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
 					//get component array
 					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
@@ -218,61 +227,75 @@ class JpegEncoder {
 					multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol] = dctArray3;
 				}
 			}
-		}
+		}*/
 		
 		
 		
-		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
-			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
-				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+		for(int index = 0; index < (MinBlockHeight * MinBlockWidth); index++){		
+			AtomicReference<Boolean> ready = done.get(index);
+			while(!ready.get());
+			for (int currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
-					int[] blockArray = multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol];
-					mHuffman.HuffmanBlockEncoder(outStream, blockArray,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
-					lastDCvalue[currComponent] = blockArray[0];
-				}
+				int[] blockArray = multiDCTa3[currComponent][index];
+				mHuffman.HuffmanBlockEncoder(outStream, blockArray,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
+				lastDCvalue[currComponent] = blockArray[0];
 			}
 		}
 		mHuffman.flushBuffer(outStream);
 	}
 	
-	public AtomicInteger counter;
-	
-	public class handleDCT implements Runnable{
+	public class dataGrabber implements Runnable {
 
-		private int mComp;
-		private int mRow;
-		private int mCol;
 		private int[][][] mStorage;
-		private int mWidth;
+		private AtomicInteger mCount;
+		private int MinBlockWidth;
+		private int mNumBlocks;
+		private HashMap<Integer,AtomicReference<Boolean>> mDone;
 		
-		public handleDCT(int comp, int row, int col, int[][][] storage, int width){
-			mComp = comp;
-			mRow = row;
-			mCol = col;
+		public dataGrabber(int[][][] storage, final AtomicInteger count, final int MBW, final int nB, HashMap<Integer,AtomicReference<Boolean>> d){
 			mStorage = storage;
-			mWidth = width;
+			mCount = count;
+			MinBlockWidth = MBW;
+			mNumBlocks = nB;
+			mDone = d;
 		}
 		
 		@Override
 		public void run() {
-			float[][] componentArray = (float[][]) mJpegInfo.Components[mComp];
-
-			float dctArray1[][] = new float[8][8];
-			double dctArray2[][] = new double[8][8];
-			int dctArray3[] = new int[8 * 8];
+			int number = mCount.getAndDecrement();
 			
-			//parse out block position
-			for (int a = 0; a < 8; a++) {
-				for (int b = 0; b < 8; b++) {
-					dctArray1[a][b] = componentArray[(mRow*8) + a][(mCol*8) + b];
+			while(number > 0){
+				int index = mNumBlocks - number;
+				float dctArray1[][] = new float[8][8];
+				double dctArray2[][] = new double[8][8];
+				int dctArray3[] = new int[8 * 8];
+				int ypos = index / MinBlockWidth * 8;
+				int xpos = index % MinBlockWidth * 8;
+				//System.out.println("Index: " + index + " | Xpos: " + xpos + " | Ypos: " + ypos + " | MBW: " + MinBlockWidth);
+				
+				for (int cC = 0; cC < JpegInfo.NumberOfComponents; cC++) {
+
+					//get component array
+					float[][] componentArray = (float[][]) mJpegInfo.Components[cC];
+
+					//parse out block position
+					for (int a = 0; a < 8; a++) {
+						for (int b = 0; b < 8; b++) {
+							dctArray1[a][b] = componentArray[ypos + a][xpos + b];
+						}
+					}
+					dctArray2 = mDCT.forwardDCT(dctArray1);
+					dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[cC]);
+					mStorage[cC][index] = dctArray3;
 				}
+				AtomicReference<Boolean> complete = mDone.get(index);
+				complete.set(true);
+				number = mCount.getAndDecrement();
 			}
-			dctArray2 = mDCT.forwardDCT(dctArray1);
-			dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[mComp]);
-			mStorage[mComp][mRow*mWidth + mCol] = dctArray3;
 		}
 		
 	}
+	
 		// Iterate the grid of blocks
 		/*for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
 			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
