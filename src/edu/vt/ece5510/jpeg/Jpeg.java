@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+
 // Version 1.0a
 // Copyright (C) 1998, James R. Weeks and BioElectroMech.
 // Visit BioElectroMech at www.obrador.com. Email James@obrador.com.
@@ -63,6 +64,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * image.
  */
 class JpegEncoder {
+	
+	public static DataApproach  mDataApproach = DataApproach.SingleThread;
+	
+	public  enum DataApproach{
+		SingleThread,MultiThread;
+	}
 
 	private BufferedOutputStream mOutStream;
 
@@ -86,6 +93,8 @@ class JpegEncoder {
 			14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37,
 			44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62,
 			63, };
+	
+	public static final int NUMBER_THREADS = 5;
 
 	/**
 	 * 
@@ -167,151 +176,148 @@ class JpegEncoder {
 
 		long start = System.nanoTime();
 		// Setup the block width and height
-		int MinBlockWidth, MinBlockHeight, currComponent;
-		
+		final int MinBlockWidth, MinBlockHeight;
+		int tempMBW, tempMBH;
 
-		MinBlockWidth = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8: mJpegInfo.imageWidth);
-		MinBlockHeight = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8: mJpegInfo.imageHeight);
-		for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
-			MinBlockWidth = Math.min(MinBlockWidth,mJpegInfo.BlockWidth[currComponent]);
-			MinBlockHeight = Math.min(MinBlockHeight,	mJpegInfo.BlockHeight[currComponent]);
+		tempMBW = ((mJpegInfo.imageWidth % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageWidth / 8.0) + 1) * 8: mJpegInfo.imageWidth);
+		tempMBH = ((mJpegInfo.imageHeight % 8 != 0) ? (int) (Math.floor(mJpegInfo.imageHeight / 8.0) + 1) * 8: mJpegInfo.imageHeight);
+		for (int currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+			tempMBW = Math.min(tempMBW,mJpegInfo.BlockWidth[currComponent]);
+			tempMBH= Math.min(tempMBH,	mJpegInfo.BlockHeight[currComponent]);
 		}
-
-		float dctArray1[][] = new float[8][8];
-		double dctArray2[][] = new double[8][8];
-		int dctArray3[] = new int[8 * 8];
-		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
+		
+		MinBlockWidth = tempMBW;
+		MinBlockHeight = tempMBH;
 		
 		writeTimings.setup = System.nanoTime() - start;
-		
-		int numBlocks = MinBlockWidth * MinBlockHeight;
-		/*AtomicInteger count = new AtomicInteger(numBlocks);
-		HashMap<Integer,AtomicReference<Boolean>> done = new HashMap<Integer, AtomicReference<Boolean>>(numBlocks);
-		for(int i = 0; i < numBlocks; i++){
-			done.put(i, new AtomicReference<Boolean>(false));
-		}*/
-		//int hugeDCTa3[][] = new int[3][64*MinBlockWidth*MinBlockHeight];
-		int multiDCTa3[][][] = new int[JpegInfo.NumberOfComponents][numBlocks][];
-		
-	//	int nThreads = System.ge
-		
-		// Iterate the grid of blocks
-		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
-			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
-				int xpos = blockCol * 8;
-				int ypos = blockRow * 8;
-				
-				// Iterate over all components
-				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
-					// Get component array
-					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
+		int lastDCvalue[] = new int[JpegInfo.NumberOfComponents];
+		
+		switch(mDataApproach){
+		case SingleThread:{
+			float dctArray1[][] = new float[8][8];
+			double dctArray2[][] = new double[8][8];
+			int dctArray3[] = new int[8 * 8];
+			for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
+				for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
+					int xpos = blockCol * 8;
+					int ypos = blockRow * 8;
+					
+					long loop = System.nanoTime();
+					// Iterate over all components
+					for (int currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
-					//parse out block position
-					for (int a = 0; a < 8; a++) {
-						for (int b = 0; b < 8; b++) {
-							dctArray1[a][b] = componentArray[ypos + a][xpos + b];
+						float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
+
+						start = System.nanoTime();
+						for (int a = 0; a < 8; a++) {
+							for (int b = 0; b < 8; b++) {
+								dctArray1[a][b] = componentArray[ypos + a][xpos + b];
+							}
 						}
+						writeTimings.generateDCT = writeTimings.generateDCT + System.nanoTime() - start;
+						start = System.nanoTime();
+						dctArray2 = mDCT.forwardDCT(dctArray1);
+						writeTimings.forwardDCT = writeTimings.forwardDCT + System.nanoTime() - start;
+						start = System.nanoTime();
+						dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[currComponent]);
+						writeTimings.quantizeDCT = writeTimings.quantizeDCT + System.nanoTime() - start;
+						start = System.nanoTime();
+						mHuffman.HuffmanBlockEncoder(outStream, dctArray3,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
+						writeTimings.huffman = writeTimings.huffman + System.nanoTime() - start;
+						lastDCvalue[currComponent] = dctArray3[0];
 					}
-					dctArray2 = mDCT.forwardDCT(dctArray1);
-					dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[currComponent]);
-					multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol] = dctArray3;
+					writeTimings.blockTime = writeTimings.blockTime  + System.nanoTime() - loop;
 				}
 			}
+			mHuffman.flushBuffer(outStream);
 		}
-		
-		
-		
-		for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
-			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
-				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+		case MultiThread:{
+			int numBlocks = MinBlockWidth * MinBlockHeight;
+			AtomicInteger count = new AtomicInteger(numBlocks);
+			HashMap<Integer,AtomicReference<Boolean>> done = new HashMap<Integer, AtomicReference<Boolean>>(numBlocks);
+			for(int i = 0; i < numBlocks; i++){
+				done.put(i, new AtomicReference<Boolean>(false));
+			}
+			
+			int multiDCTa3[][][] = new int[JpegInfo.NumberOfComponents][numBlocks][];
+			
+			//ArrayList<Thread> threads = new ArrayList<Thread>(NUMBER_THREADS);
+			for(int i = 0; i < NUMBER_THREADS; i++){
+				Thread t = new Thread(new dataGrabber(multiDCTa3, count, MinBlockWidth, numBlocks, done));
+				t.start();
+			}
+			start = System.nanoTime();
+			for(int index = 0; index < (MinBlockHeight * MinBlockWidth); index++){		
+				AtomicReference<Boolean> ready = done.get(index);
+				while(!ready.get());
+				for (int currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
 
-					int[] blockArray = multiDCTa3[currComponent][blockRow*MinBlockWidth + blockCol];
-					mHuffman.HuffmanBlockEncoder(outStream, blockArray,
-							lastDCvalue[currComponent],
-							mJpegInfo.DCtableNumber[currComponent],
-							mJpegInfo.ACtableNumber[currComponent]);
+
+					int[] blockArray = multiDCTa3[currComponent][index];
+					mHuffman.HuffmanBlockEncoder(outStream, blockArray,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
+
 					lastDCvalue[currComponent] = blockArray[0];
 				}
 			}
+			writeTimings.huffman = System.nanoTime() - start;
+			mHuffman.flushBuffer(outStream);
 		}
-		mHuffman.flushBuffer(outStream);
+		}
+		
+				
 	}
 	
-	/*public AtomicInteger counter;
-	
-	public class handleDCT implements Runnable{
+	public class dataGrabber implements Runnable {
 
-		private int mComp;
-		private int mRow;
-		private int mCol;
+
 		private int[][][] mStorage;
-		private int mWidth;
+		private AtomicInteger mCount;
+		private int MinBlockWidth;
+		private int mNumBlocks;
+		private HashMap<Integer,AtomicReference<Boolean>> mDone;
 		
-		public handleDCT(int comp, int row, int col, int[][][] storage, int width){
-			mComp = comp;
-			mRow = row;
-			mCol = col;
+		public dataGrabber(int[][][] storage, final AtomicInteger count, final int MBW, final int nB, HashMap<Integer,AtomicReference<Boolean>> d){
 			mStorage = storage;
-			mWidth = width;
+			mCount = count;
+			MinBlockWidth = MBW;
+			mNumBlocks = nB;
+			mDone = d;
 		}
 		
 		@Override
 		public void run() {
-			float[][] componentArray = (float[][]) mJpegInfo.Components[mComp];
-
-			float dctArray1[][] = new float[8][8];
-			double dctArray2[][] = new double[8][8];
-			int dctArray3[] = new int[8 * 8];
+			int number = mCount.getAndDecrement();
 			
-			//parse out block position
-			for (int a = 0; a < 8; a++) {
-				for (int b = 0; b < 8; b++) {
-					dctArray1[a][b] = componentArray[(mRow*8) + a][(mCol*8) + b];
-				}
-			}
-			dctArray2 = mDCT.forwardDCT(dctArray1);
-			dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[mComp]);
-			mStorage[mComp][mRow*mWidth + mCol] = dctArray3;
-		}
-		
-	}*/
-		// Iterate the grid of blocks
-		/*for (int blockRow = 0; blockRow < MinBlockHeight; blockRow++) {
-			for (int blockCol = 0; blockCol < MinBlockWidth; blockCol++) {
-				int xpos = blockCol * 8;
-				int ypos = blockRow * 8;
+			while(number > 0){
 				
-				long loop = System.nanoTime();
-				// Iterate over all components
-				for (currComponent = 0; currComponent < JpegInfo.NumberOfComponents; currComponent++) {
+				int index = mNumBlocks - number;
+				float dctArray1[][] = new float[8][8];
+				double dctArray2[][] = new double[8][8];
+				int dctArray3[] = new int[8 * 8];
+				int ypos = index / MinBlockWidth * 8;
+				int xpos = index % MinBlockWidth * 8;
+				
+				for (int cC = 0; cC < JpegInfo.NumberOfComponents; cC++) {
 
-					float[][] componentArray = (float[][]) mJpegInfo.Components[currComponent];
-
-					start = System.nanoTime();
+					float[][] componentArray = (float[][]) mJpegInfo.Components[cC];
+					
 					for (int a = 0; a < 8; a++) {
 						for (int b = 0; b < 8; b++) {
 							dctArray1[a][b] = componentArray[ypos + a][xpos + b];
 						}
 					}
-					writeTimings.generateDCT = writeTimings.generateDCT + System.nanoTime() - start;
-					start = System.nanoTime();
 					dctArray2 = mDCT.forwardDCT(dctArray1);
-					writeTimings.forwardDCT = writeTimings.forwardDCT + System.nanoTime() - start;
-					start = System.nanoTime();
-					dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[currComponent]);
-					writeTimings.quantizeDCT = writeTimings.quantizeDCT + System.nanoTime() - start;
-					start = System.nanoTime();
-					mHuffman.HuffmanBlockEncoder(outStream, dctArray3,	lastDCvalue[currComponent],mJpegInfo.DCtableNumber[currComponent],mJpegInfo.ACtableNumber[currComponent]);
-					writeTimings.huffman = writeTimings.huffman + System.nanoTime() - start;
-					lastDCvalue[currComponent] = dctArray3[0];
+					dctArray3 = mDCT.quantizeBlock(dctArray2,mJpegInfo.quantizeTableNumbers[cC]);
+					mStorage[cC][index] = dctArray3;
 				}
-				writeTimings.blockTime = writeTimings.blockTime  + System.nanoTime() - loop;
+				AtomicReference<Boolean> complete = mDone.get(index);
+				complete.set(true);
+				number = mCount.getAndDecrement();
 			}
 		}
-		mHuffman.flushBuffer(outStream);
-	}*/
-
+		
+	}
 	private void writeEOI(BufferedOutputStream out) {
 		byte[] EOI = { (byte) 0xFF, (byte) 0xD9 };
 		writeArray(EOI, out);
