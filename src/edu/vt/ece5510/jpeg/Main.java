@@ -28,115 +28,15 @@ public class Main {
 	public static void main(String[] args) {
 
 		try {
-			//combinedAnalysis();
 			fullTimeComparison();
-			 //timeBuildingAndWriting();
+			//timeBuildingAndWriting();
 			timeBuildingJpegInfo();
-			 timeWritingData();
+			timeWritingData();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-	
-	public static void combinedAnalysis() throws IOException, FileNotFoundException{
-		File inDir = new File(IMG_IN_DIR);
-		
-		PrintWriter totalTimings = new PrintWriter(new File(OUT_FULL_TIME_COMPARISON));
-		PrintWriter writeTimings = new PrintWriter(new File(OUT_WRITE_COMPRESSED_DATA_TIMINGS));
-		PrintWriter colorTimings = new PrintWriter(new File(OUT_JPEG_COLOR_CONVERSION));
-		PrintWriter[] timings = new PrintWriter[]{totalTimings,writeTimings,colorTimings};
-		for(PrintWriter pw : timings){
-			pw.print("Single,");
-			for(int i = 0; i < mNumThreads.length; i++){
-				pw.print(mNumThreads[i] + " Worker,");
-			}
-			pw.println();
-		}
-	
-		Random r = new Random();
-	
-		int progress = 1;
-		
-		long singleTime = 0;
-		
-		long[][] multiTime = new long[3][mNumThreads.length];
-		for(int i = 0; i <mNumThreads.length; i++){
-			multiTime[0][i] = 0;
-			multiTime[1][i] = 0;
-			multiTime[2][i] = 0;
-		}
-		int count = inDir.listFiles().length;
-		for (File currImg : inDir.listFiles()) {
-			System.gc();
-			System.out.print(".");
-			if (progress++ % 80 == 0)
-				System.out.println("");
-	
-			BufferedImage current = ImageIO.read(currImg);
-			if (current == null)
-				continue;
-	
-			int quality = r.nextInt(100) + 1;
-			
-			JpegInfo.mApproach = Approach.SingleThread;
-			JpegEncoder.mDataApproach = DataApproach.SingleThread;
-			long singleStart = System.nanoTime();
-			JpegEncoder ss = new JpegEncoder(current, quality,
-					new BufferedOutputStreamSink());
-			ss.compress();
-			long singleEnd = System.nanoTime() - singleStart;
-			singleTime = singleTime + (singleEnd / count);
-			
-			for(int i = 0; i < mNumThreads.length; i++){
-				int nT = mNumThreads[i];
-				JpegEncoder.NUMBER_THREADS = nT;
-				JpegInfo.threadCount = nT;
-			
-				JpegInfo.mApproach = Approach.SingleThread;
-				JpegEncoder.mDataApproach = DataApproach.MultiThread;
-				JpegEncoder sm = new JpegEncoder(current, quality,
-						new BufferedOutputStreamSink());
-				sm.compress();
-				multiTime[1][i] = multiTime[1][i] + (sm.timings.writingCompressedData / count);
-				
-				JpegInfo.mApproach = Approach.ColumnColorConvert;
-				JpegEncoder.mDataApproach = DataApproach.SingleThread;
-				JpegEncoder ms = new JpegEncoder(current, quality,
-						new BufferedOutputStreamSink());
-				ms.compress();
-				multiTime[2][i]  = multiTime[2][i] + (ms.timings.jpegInfoColorConversion / count);
-				
-				JpegInfo.mApproach = Approach.ColumnColorConvert;
-				JpegEncoder.mDataApproach = DataApproach.MultiThread;
-				long multiStart = System.nanoTime();
-				JpegEncoder mm = new JpegEncoder(current, quality,	new BufferedOutputStreamSink());
-				mm.compress();
-				long multiEnd = System.nanoTime() - multiStart;
-				multiTime[0][i] = multiTime[0][i] + (multiEnd / count);
-			
-			}
-			for(PrintWriter pw: timings){
-				pw.print(singleTime + ",");
-			}
-			for(int i = 0; i < mNumThreads.length; i++){
-				totalTimings.print(multiTime[0][i] + ",");
-				writeTimings.print(multiTime[1][i] + ",");
-				colorTimings.print(multiTime[2][i] + ",");
-			}
-			
-			for(PrintWriter pw: timings){
-				pw.println();
-				pw.flush();
-				pw.close();
-			}
-			//timings.print(single);
-			//timings.print(',');
-	
-			
-		}
-		
 	}
 	
 	public static void fullTimeComparison() throws IOException,FileNotFoundException{

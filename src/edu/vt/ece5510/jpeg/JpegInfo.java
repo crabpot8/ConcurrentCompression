@@ -124,7 +124,7 @@ class JpegInfo {
 				threads[i] = new Thread(new RowColorConvertor(values,
 						imageWidth, imageHeight, rowCounter, Y, Cr1, Cb1));
 
-			start = System.nanoTime();
+			//start = System.nanoTime();
 			for (int i = 0; i < threadCount; i++)
 				threads[i].start();
 
