@@ -28,10 +28,11 @@ public class Main {
 	public static void main(String[] args) {
 
 		try {
-			fullTimeComparison();
+			//combinedAnalysis();
+			//fullTimeComparison();
 			 //timeBuildingAndWriting();
-			 timeBuildingJpegInfo();
-			 timeWritingData();
+			timeBuildingJpegInfo();
+			// timeWritingData();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -110,8 +111,7 @@ public class Main {
 				JpegInfo.mApproach = Approach.SingleThread;
 				JpegEncoder.mDataApproach = DataApproach.SingleThread;
 				long multiStart = System.nanoTime();
-				JpegEncoder mm = new JpegEncoder(current, quality,
-						new BufferedOutputStreamSink());
+				JpegEncoder mm = new JpegEncoder(current, quality,	new BufferedOutputStreamSink());
 				mm.compress();
 				long multiEnd = System.nanoTime() - multiStart;
 				multiTime[0][i] = multiTime[0][i] + (multiEnd / count);
