@@ -29,10 +29,10 @@ public class Main {
 
 		try {
 			//combinedAnalysis();
-			//fullTimeComparison();
+			fullTimeComparison();
 			 //timeBuildingAndWriting();
 			timeBuildingJpegInfo();
-			// timeWritingData();
+			 timeWritingData();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -106,10 +106,10 @@ public class Main {
 				JpegEncoder ms = new JpegEncoder(current, quality,
 						new BufferedOutputStreamSink());
 				ms.compress();
-				multiTime[2][i]  = multiTime[2][i] + (sm.timings.jpegInfoColorConversion / count);
+				multiTime[2][i]  = multiTime[2][i] + (ms.timings.jpegInfoColorConversion / count);
 				
-				JpegInfo.mApproach = Approach.SingleThread;
-				JpegEncoder.mDataApproach = DataApproach.SingleThread;
+				JpegInfo.mApproach = Approach.ColumnColorConvert;
+				JpegEncoder.mDataApproach = DataApproach.MultiThread;
 				long multiStart = System.nanoTime();
 				JpegEncoder mm = new JpegEncoder(current, quality,	new BufferedOutputStreamSink());
 				mm.compress();
