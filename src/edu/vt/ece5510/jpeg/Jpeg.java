@@ -94,9 +94,9 @@ class JpegEncoder {
 			44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62,
 			63, };
 	
-	public static final int NUMBER_THREADS = 5;
+	public static int NUMBER_THREADS = 5;
 
-	/**
+	/** 
 	 * 
 	 * @param image
 	 *            An image that should be compressed into jpeg. For proper speed

@@ -49,6 +49,7 @@ class JpegInfo {
 	};
 
 	public static Approach mApproach = Approach.ColumnColorConvert;
+	public static int threadCount = 5;
 
 	public JpegInfo(Image image) {
 		Components = new Object[NumberOfComponents];
@@ -118,7 +119,6 @@ class JpegInfo {
 		case ColumnColorConvert:
 
 			AtomicInteger rowCounter = new AtomicInteger(0);
-			int threadCount = 4;
 			Thread[] threads = new Thread[threadCount];
 			for (int i = 0; i < threadCount; i++)
 				threads[i] = new Thread(new RowColorConvertor(values,
